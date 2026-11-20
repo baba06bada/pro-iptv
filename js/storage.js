@@ -33,6 +33,7 @@ var IPTVStorage = (function () {
         liveFormat: 'ts',
         epgOffsetHours: 0,
         startupLiveFullscreen: false,
+        corsProxy: '',
         parentalEnabled: true,
         parentalPin: '0000',
         aspectMode: 'contain'
@@ -83,6 +84,7 @@ var IPTVStorage = (function () {
       if (typeof s.liveFormat === 'string') { def.settings.liveFormat = s.liveFormat; }
       if (typeof s.epgOffsetHours === 'number') { def.settings.epgOffsetHours = s.epgOffsetHours; }
       if (typeof s.startupLiveFullscreen === 'boolean') { def.settings.startupLiveFullscreen = s.startupLiveFullscreen; }
+      if (typeof s.corsProxy === 'string') { def.settings.corsProxy = s.corsProxy; }
       if (typeof s.parentalEnabled === 'boolean') { def.settings.parentalEnabled = s.parentalEnabled; }
       if (typeof s.parentalPin === 'string' && s.parentalPin.length === 4) { def.settings.parentalPin = s.parentalPin; }
       if (typeof s.aspectMode === 'string') { def.settings.aspectMode = s.aspectMode; }

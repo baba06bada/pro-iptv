@@ -54,9 +54,34 @@ var IPTVParser = (function () {
     return u;
   }
 
+  function buildProxiedUrl(targetUrl) {
+    if (!targetUrl) { return ''; }
+    var proxy = '';
+    try {
+      if (typeof IPTVStorage !== 'undefined' && IPTVStorage.getSettings) {
+        proxy = trimStr(IPTVStorage.getSettings().corsProxy || '');
+      }
+    } catch (e) {}
+    if (!proxy) { return targetUrl; }
+    if (proxy.indexOf('{url}') !== -1) {
+      return proxy.replace('{url}', encodeURIComponent(targetUrl));
+    }
+    return proxy + encodeURIComponent(targetUrl);
+  }
+
+  function isHttpsPage() {
+    try {
+      return !!(window.location && window.location.protocol === 'https:');
+    } catch (e) {
+      return false;
+    }
+  }
+
   function xhrGet(url, onSuccess, onError) {
     var xhr = new XMLHttpRequest();
     var finished = false;
+    var reqUrl = buildProxiedUrl(url);
+    var hasProxy = (reqUrl !== url);
 
     function doneError(msg) {
       if (finished) { return; }
@@ -64,8 +89,18 @@ var IPTVParser = (function () {
       if (onError) { onError(msg); }
     }
 
+    function buildNetworkErrorMsg() {
+      if (isHttpsPage() && url.indexOf('http://') === 0 && !hasProxy) {
+        return 'HTTPS / CORS Engeli: GitHub Pages (HTTPS) üzerinden HTTP IPTV adresi doğrudan okunamaz. CORS Proxy URL girin veya LG TV (.ipk) kullanın.';
+      }
+      if (!hasProxy && window.location && (window.location.protocol === 'http:' || window.location.protocol === 'https:')) {
+        return 'Tarayıcı CORS Engeli: IPTV sunucusu tarayıcı erişimine izin vermiyor. CORS Proxy URL girin veya LG TV (.ipk) kullanın.';
+      }
+      return 'Sunucuya erişilemedi (CORS Proxy veya IPTV adresi hatalı olabilir).';
+    }
+
     try {
-      xhr.open('GET', url, true);
+      xhr.open('GET', reqUrl, true);
       xhr.timeout = XHR_TIMEOUT;
       xhr.onreadystatechange = function () {
         if (xhr.readyState !== 4 || finished) { return; }
@@ -73,7 +108,7 @@ var IPTVParser = (function () {
           finished = true;
           if (onSuccess) { onSuccess(xhr.responseText); }
         } else if (xhr.status === 0) {
-          doneError('Bağlantı engellendi (CORS veya sunucu erişilemez). TV üzerinde IPK olarak sorunsuz çalışır.');
+          doneError(buildNetworkErrorMsg());
         } else {
           doneError('Sunucu hatası: HTTP ' + xhr.status);
         }
@@ -82,7 +117,7 @@ var IPTVParser = (function () {
         doneError('Sunucu yanıt vermedi (Zaman aşımı).');
       };
       xhr.onerror = function () {
-        doneError('Ağ bağlantısı hatası veya CORS engeli.');
+        doneError(buildNetworkErrorMsg());
       };
       xhr.send(null);
     } catch (e) {

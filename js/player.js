@@ -119,6 +119,25 @@ var IPTVPlayer = (function () {
     return '';
   }
 
+  function buildProxyStreamUrl(url) {
+    if (!url) { return ''; }
+    var settings = IPTVStorage.getSettings();
+    var proxy = settings && settings.corsProxy ? String(settings.corsProxy).replace(/^\s+|\s+$/g, '') : '';
+    if (!proxy) { return ''; }
+    if (proxy.indexOf('{url}') !== -1) {
+      return proxy.replace('{url}', encodeURIComponent(url));
+    }
+    return proxy + encodeURIComponent(url);
+  }
+
+  function isHttpsContext() {
+    try {
+      return !!(window.location && window.location.protocol === 'https:');
+    } catch (e) {
+      return false;
+    }
+  }
+
   function buildCandidateList(item, isLive) {
     var list = [];
     if (!item) { return list; }
@@ -126,6 +145,8 @@ var IPTVPlayer = (function () {
     var settings = IPTVStorage.getSettings();
     var pref = settings.liveFormat || 'ts'; // 'ts' | 'hls' | 'auto'
     var webos = isWebOSTV();
+    var nativeHlsBrowser = !webos && canPlayNativeHls(videoEl); // iPhone / iPad / Mac Safari
+    var httpsMixed = isHttpsContext();
     var primary = item.url || '';
     var tsUrl = item.tsUrl || toTsVariant(primary);
     var rawTsUrl = item.rawTsUrl || '';
@@ -134,23 +155,42 @@ var IPTVPlayer = (function () {
     var fallback = item.fallbackUrl || '';
     var fallbackIsMp4 = endsWithCI(stripQuery(fallback), '.mp4');
 
-    // VOD & Series: play directly with videoEl.src (works identically on webOS 2.2.3 & desktop)
+    // VOD & Series: play directly with videoEl.src (plus proxy fallback if HTTPS -> HTTP)
     if (!isLive) {
+      if (httpsMixed && primary.indexOf('http://') === 0) {
+        var proxVod = buildProxyStreamUrl(primary);
+        if (proxVod) {
+          addCandidate(list, proxVod, 'direct', '', 'VOD (Proxy)');
+        }
+      }
       addCandidate(list, primary, 'direct', '', 'VOD');
       addCandidate(list, fallback, 'direct', '', 'VOD Yedek');
       return list;
     }
 
-    // Desktop browser preview with Demo MP4 fallback (Chrome/Firefox cannot decode raw .ts/.m3u8 natively)
-    if (!webos && !canPlayNativeHls(videoEl) && fallbackIsMp4) {
+    // Desktop non-Safari browser preview with Demo MP4 fallback
+    if (!webos && !nativeHlsBrowser && fallbackIsMp4) {
       addCandidate(list, fallback, 'direct', '', 'MP4 Canlı Önizleme');
       addCandidate(list, primary, 'direct', '', 'HLS');
       return list;
     }
 
+    // iPhone / iPad / Mac Safari: natively plays HLS (.m3u8), NOT raw .ts
+    if (nativeHlsBrowser) {
+      if (hlsUrl) {
+        if (httpsMixed && hlsUrl.indexOf('http://') === 0) {
+          var proxHls = buildProxyStreamUrl(hlsUrl);
+          if (proxHls) { addCandidate(list, proxHls, 'direct', '', 'HLS (Proxy)'); }
+        }
+        addCandidate(list, hlsUrl, 'direct', '', 'HLS (.m3u8)');
+        addCandidate(list, hlsUrl, 'source', 'application/vnd.apple.mpegurl', 'HLS MIME');
+      }
+      addCandidate(list, primary, 'direct', '', 'Ana Akış');
+      addCandidate(list, fallback, 'direct', '', 'Yedek Akış');
+      return list;
+    }
+
     // LG webOS 2.2.3 Live TV: Direct MPEG-TS (.ts) first!
-    // Uses direct video.src first (exact pipeline that works on webOS 2.2.3),
-    // followed by explicit video/mp2t <source>, alternate Xtream TS paths, and HLS fallback.
     if (pref === 'hls') {
       if (hlsUrl) {
         addCandidate(list, hlsUrl, 'direct', '', 'HLS (.m3u8)');

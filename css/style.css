@@ -15,13 +15,13 @@
 }
 
 html, body {
-  width: 1920px;
-  height: 1080px;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
-  background-color: #0b0f19;
+  background-color: #000000;
   color: #edf2f7;
   font-family: "LG Smart UI", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-  font-size: 22px;
+  font-size: 24px;
   line-height: 1.35;
   -webkit-font-smoothing: antialiased;
 }
@@ -40,12 +40,21 @@ button {
   cursor: pointer;
 }
 
+[data-focusable="true"] {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
 #app-root {
-  position: relative;
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 1920px;
   height: 1080px;
   overflow: hidden;
   background-color: #0b0f19;
+  -webkit-transform-origin: 0 0;
+  transform-origin: 0 0;
 }
 
 .is-hidden {
@@ -2692,3 +2701,619 @@ button {
 .ep-modal-row.is-focused {
   background-color: #1d3c66;
 }
+
+/* ==========================================================================
+   3-METER 10-FOOT TV LEGIBILITY & LARGE MENU SCALE (PIXEL-VERIFIED 1920x1080)
+   Strict Legacy WebKit 538.2 - Zero Grid, Zero var(), Zero gap
+   ========================================================================== */
+
+/* Buttons & Inputs */
+.btn-primary,
+.btn-secondary,
+.btn-ghost,
+.btn-danger {
+  height: 62px;
+  line-height: 58px;
+  font-size: 24px;
+}
+
+.btn-sm {
+  height: 52px;
+  line-height: 48px;
+  padding: 0 24px;
+  font-size: 22px;
+}
+
+.btn-demo {
+  height: 68px;
+  line-height: 64px;
+  font-size: 25px;
+}
+
+.tv-input {
+  height: 58px;
+  font-size: 23px;
+}
+
+/* Account Manager compact vertical spacing to fit CORS Proxy field cleanly */
+.manager-body {
+  padding: 28px 56px;
+}
+
+.field-row {
+  margin-bottom: 14px;
+}
+
+.field-label {
+  font-size: 21px;
+  margin-bottom: 6px;
+}
+
+.proxy-field-row {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #1e2d45;
+}
+
+.form-actions {
+  margin-top: 18px;
+}
+
+.panel-heading {
+  font-size: 28px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+}
+
+.profile-card-name {
+  font-size: 26px;
+}
+
+.profile-card-meta {
+  font-size: 20px;
+}
+
+.p-btn {
+  height: 50px;
+  line-height: 46px;
+  font-size: 21px;
+}
+
+/* Wider, Larger Sidebar & Top Bar (144px + 1776px = 1920px) */
+.sidebar {
+  width: 144px;
+}
+
+.sidebar-logo {
+  width: 144px;
+  height: 86px;
+  line-height: 86px;
+  font-size: 32px;
+}
+
+.sidebar-nav {
+  padding: 14px 10px;
+}
+
+.nav-btn {
+  width: 124px;
+  height: 96px;
+  padding-top: 14px;
+  margin-bottom: 10px;
+}
+
+.nav-icon {
+  width: 38px;
+  height: 38px;
+  margin: 0 auto 7px auto;
+  background-size: 34px 34px;
+}
+
+.nav-label {
+  font-size: 19px;
+}
+
+.workspace {
+  width: 1776px;
+}
+
+.dash-topbar {
+  width: 1776px;
+  height: 86px;
+  padding: 0 30px;
+}
+
+.section-title {
+  font-size: 34px;
+}
+
+.profile-indicator {
+  font-size: 24px;
+}
+
+.color-hint {
+  font-size: 21px;
+  margin-left: 16px;
+}
+
+.dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 7px;
+}
+
+.clock-text {
+  font-size: 34px;
+}
+
+.date-text {
+  font-size: 22px;
+}
+
+.dash-view {
+  width: 1776px;
+  height: 994px;
+}
+
+/* Live TV 3-Column Layout (376 + 630 + 770 = 1776px) */
+.live-col-cats {
+  width: 376px;
+  height: 994px;
+}
+
+.live-col-channels {
+  width: 630px;
+  height: 994px;
+}
+
+.live-col-right {
+  width: 770px;
+  height: 994px;
+  padding: 20px 24px;
+}
+
+.col-header {
+  height: 62px;
+  padding: 0 20px;
+  font-size: 24px;
+}
+
+.col-count {
+  font-size: 21px;
+}
+
+.virtual-list {
+  height: 932px;
+  padding: 10px 12px;
+}
+
+/* 11 Large Category Rows (11 x 82px = 902px <= 912px) */
+.cat-row {
+  height: 76px;
+  margin-bottom: 6px;
+  padding: 0 18px;
+  font-size: 25px;
+  font-weight: 600;
+}
+
+.cat-name {
+  max-width: 256px;
+}
+
+.cat-count {
+  font-size: 21px;
+}
+
+/* 11 Large Channel Rows (11 x 82px = 902px <= 912px) */
+.ch-row {
+  height: 76px;
+  margin-bottom: 6px;
+  padding: 6px 14px;
+}
+
+.ch-num {
+  width: 66px;
+  font-size: 24px;
+}
+
+.ch-logo-box {
+  width: 60px;
+  height: 46px;
+  line-height: 46px;
+  margin-right: 14px;
+}
+
+.ch-logo-img {
+  max-width: 54px;
+  max-height: 40px;
+}
+
+.ch-main {
+  width: 404px;
+}
+
+.ch-name {
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.ch-epg-mini {
+  font-size: 19px;
+  margin-top: 2px;
+}
+
+.ch-mini-prog,
+.ch-mini-prog-fill {
+  height: 4px;
+}
+
+.ch-fav {
+  width: 32px;
+  font-size: 26px;
+}
+
+/* Pixel-Locked Right Preview Box & Permanent Video Layer (16:9 = 722x406) */
+.preview-box {
+  width: 722px;
+  height: 406px;
+  margin-bottom: 20px;
+}
+
+.video-stage-layer.mode-preview {
+  left: 1176px;
+  top: 108px;
+  width: 718px;
+  height: 402px;
+}
+
+.preview-idle {
+  padding-top: 130px;
+}
+
+.preview-idle-text {
+  font-size: 25px;
+}
+
+.preview-overlay-bar {
+  height: 56px;
+}
+
+.preview-ch-label {
+  font-size: 24px;
+  max-width: 480px;
+}
+
+.preview-fs-hint {
+  font-size: 20px;
+}
+
+/* Large EPG Panel */
+.epg-panel {
+  width: 722px;
+  height: 526px;
+  padding: 22px 24px;
+}
+
+.epg-heading {
+  font-size: 25px;
+}
+
+.epg-ch-meta {
+  font-size: 21px;
+}
+
+.epg-now-title {
+  font-size: 29px;
+  max-width: 465px;
+}
+
+.epg-time {
+  font-size: 22px;
+}
+
+.epg-desc {
+  height: 196px;
+  font-size: 23px;
+  line-height: 1.48;
+}
+
+.epg-next-label {
+  font-size: 19px;
+}
+
+.epg-next-title {
+  font-size: 24px;
+  max-width: 475px;
+}
+
+/* VOD & Series Cinema Poster Grid (4x2 = 8 Large Posters) */
+.media-col-cats {
+  width: 376px;
+  height: 994px;
+}
+
+.media-col-grid {
+  width: 1400px;
+  height: 994px;
+}
+
+.poster-grid {
+  width: 1400px;
+  height: 932px;
+  padding: 22px 28px;
+}
+
+.poster-card {
+  width: 318px;
+  height: 428px;
+  margin-right: 24px;
+  margin-bottom: 24px;
+}
+
+.poster-img-wrap {
+  height: 326px;
+}
+
+.poster-fallback {
+  height: 326px;
+  line-height: 326px;
+  font-size: 26px;
+}
+
+.poster-rating {
+  font-size: 20px;
+  padding: 4px 12px;
+}
+
+.poster-info {
+  padding: 12px 16px;
+}
+
+.poster-title {
+  font-size: 24px;
+}
+
+.poster-sub {
+  font-size: 19px;
+  margin-top: 4px;
+}
+
+/* Detail, Search & Settings (1776px wide) */
+.detail-container,
+.search-panel,
+.settings-layout {
+  width: 1776px;
+  height: 994px;
+}
+
+.detail-info {
+  width: 1348px;
+}
+
+.detail-title {
+  font-size: 46px;
+}
+
+.detail-meta {
+  font-size: 26px;
+}
+
+.detail-credits {
+  font-size: 23px;
+}
+
+.detail-plot {
+  font-size: 25px;
+}
+
+.season-tab {
+  height: 54px;
+  line-height: 50px;
+  font-size: 23px;
+}
+
+.ep-num {
+  font-size: 23px;
+  width: 118px;
+}
+
+.ep-title {
+  font-size: 25px;
+}
+
+.ep-dur {
+  font-size: 21px;
+}
+
+.search-input {
+  width: 1420px;
+}
+
+.filter-tab {
+  height: 54px;
+  line-height: 50px;
+  font-size: 23px;
+}
+
+.sr-type {
+  font-size: 20px;
+  width: 145px;
+}
+
+.sr-title {
+  font-size: 25px;
+  width: 1120px;
+}
+
+.sr-group {
+  font-size: 22px;
+}
+
+.settings-col {
+  width: 826px;
+  height: 926px;
+  margin-right: 36px;
+}
+
+.setting-row-compact {
+  min-height: 70px;
+  padding: 9px 18px;
+  margin-bottom: 7px;
+}
+
+.setting-row-compact .setting-title {
+  font-size: 22px;
+}
+
+.setting-row-compact .setting-desc {
+  font-size: 17px;
+}
+
+.setting-row-compact .setting-val {
+  font-size: 22px;
+}
+
+.acc-label {
+  font-size: 17px;
+}
+
+.acc-value {
+  font-size: 21px;
+}
+
+.hide-cat-row {
+  height: 62px;
+  font-size: 22px;
+}
+
+.hide-cat-status {
+  font-size: 20px;
+}
+
+/* Fullscreen Quick Channel Drawer (11 Large Rows) */
+.fs-channel-drawer {
+  width: 600px;
+}
+
+.drawer-title {
+  font-size: 28px;
+  max-width: 420px;
+}
+
+.drawer-count {
+  font-size: 22px;
+}
+
+.drawer-ch-row {
+  height: 78px;
+  margin-bottom: 6px;
+}
+
+.drawer-ch-main {
+  width: 375px;
+}
+
+.drawer-footer {
+  font-size: 20px;
+}
+
+/* Fullscreen Live Info OSD & VOD/Series OSD */
+.osd-ch-num {
+  font-size: 36px;
+}
+
+.osd-title {
+  font-size: 38px;
+}
+
+.osd-meta-tag {
+  font-size: 19px;
+  padding: 5px 12px;
+}
+
+.live-osd-group {
+  font-size: 22px;
+}
+
+.osd-epg-line {
+  font-size: 24px;
+}
+
+.live-badge {
+  font-size: 17px;
+  padding: 4px 12px;
+}
+
+.live-osd-now-title {
+  font-size: 32px;
+}
+
+.live-osd-now-time {
+  font-size: 26px;
+}
+
+.live-osd-now-rem {
+  font-size: 22px;
+}
+
+.live-osd-desc {
+  font-size: 23px;
+  max-height: 64px;
+}
+
+.live-next-tag {
+  font-size: 18px;
+}
+
+.live-osd-next-title {
+  font-size: 25px;
+}
+
+.live-osd-next-time {
+  font-size: 23px;
+}
+
+.osd-time {
+  font-size: 24px;
+  width: 126px;
+}
+
+.osd-seek-tooltip {
+  font-size: 20px;
+  width: 104px;
+  margin-left: -52px;
+  height: 34px;
+  line-height: 32px;
+  top: -40px;
+}
+
+.osd-btn {
+  height: 60px;
+  line-height: 56px;
+  padding: 0 16px;
+  font-size: 20px;
+  margin-right: 10px;
+}
+
+/* Modals & Toast */
+.modal-title {
+  font-size: 34px;
+}
+
+.modal-desc {
+  font-size: 23px;
+}
+
+.track-option {
+  height: 64px;
+  line-height: 60px;
+  font-size: 24px;
+}
+
+.toast-box {
+  width: 780px;
+  margin-left: -390px;
+  font-size: 25px;
+  padding: 20px 30px;
+}
+

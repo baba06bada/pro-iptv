@@ -11,6 +11,7 @@
   "disableBackHistoryAPI": true,
   "bgColor": "#0b0f19",
   "iconColor": "#00a8ff",
+  "splashBackground": "#0b0f19",
   "handlesRelaunch": false,
   "requiredPermissions": [
     "time.query",

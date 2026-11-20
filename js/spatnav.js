@@ -45,7 +45,9 @@ var SpatNav = (function () {
     }
     var rect = el.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) { return false; }
-    if (rect.right < 0 || rect.bottom < 0 || rect.left > 1920 || rect.top > 1080) {
+    var maxW = Math.max(1920, window.innerWidth || 1920);
+    var maxH = Math.max(1080, window.innerHeight || 1080);
+    if (rect.right < 0 || rect.bottom < 0 || rect.left > maxW || rect.top > maxH) {
       return false;
     }
     return true;

@@ -9,13 +9,13 @@
 (function () {
   'use strict';
 
-  // Virtual DOM pool capacities (prevents DOM bloat on 10,000+ channel lists)
-  var CAT_VISIBLE_COUNT = 13;
-  var CH_VISIBLE_COUNT = 14;
-  var DRAWER_VISIBLE_COUNT = 13;
-  var GRID_COLS = 5;
-  var GRID_ROWS = 3;
-  var GRID_VISIBLE_COUNT = GRID_COLS * GRID_ROWS; // 15 poster DOM nodes max
+  // Virtual DOM pool capacities (tuned for 3-meter large TV readability + zero DOM bloat)
+  var CAT_VISIBLE_COUNT = 11;
+  var CH_VISIBLE_COUNT = 11;
+  var DRAWER_VISIBLE_COUNT = 11;
+  var GRID_COLS = 4;
+  var GRID_ROWS = 2;
+  var GRID_VISIBLE_COUNT = GRID_COLS * GRID_ROWS; // 8 large cinema poster DOM nodes max
   var DETAIL_EP_VISIBLE = 5;
   var MODAL_EP_VISIBLE = 6;
 
@@ -126,6 +126,34 @@
 
   function $(id) {
     return document.getElementById(id);
+  }
+
+  // Responsive viewport scaler: 100% native 1920x1080 (transform: none) on LG webOS TV;
+  // automatically fits and centers cleanly on any PC browser window or iPhone screen.
+  function applyViewportScale() {
+    var root = $('app-root');
+    if (!root) { return; }
+    var vw = window.innerWidth || document.documentElement.clientWidth || 1920;
+    var vh = window.innerHeight || document.documentElement.clientHeight || 1080;
+    var isNativeTV = (Math.abs(vw - 1920) <= 2 && Math.abs(vh - 1080) <= 2);
+    if (isNativeTV) {
+      root.style.webkitTransform = 'none';
+      root.style.transform = 'none';
+      root.style.left = '0px';
+      root.style.top = '0px';
+      return;
+    }
+    var scale = Math.min(vw / 1920, vh / 1080);
+    if (!scale || !isFinite(scale) || scale <= 0) { scale = 1; }
+    var offsetX = Math.floor((vw - 1920 * scale) / 2);
+    var offsetY = Math.floor((vh - 1080 * scale) / 2);
+    if (offsetX < 0) { offsetX = 0; }
+    if (offsetY < 0) { offsetY = 0; }
+    root.style.left = offsetX + 'px';
+    root.style.top = offsetY + 'px';
+    var tf = 'scale(' + scale.toFixed(5) + ')';
+    root.style.webkitTransform = tf;
+    root.style.transform = tf;
   }
 
   function showEl(el) {
@@ -378,6 +406,9 @@
     app.screen = 'manager';
     renderProfileList();
     setManagerTab(app.managerTab);
+    if ($('inp-cors-proxy')) {
+      $('inp-cors-proxy').value = IPTVStorage.getSettings().corsProxy || '';
+    }
     window.setTimeout(function () {
       var list = IPTVStorage.getProfiles();
       if (list.length > 0) {
@@ -2993,7 +3024,19 @@
     $('tab-m3u').onclick = function () { setManagerTab('m3u'); };
     $('btn-load-demo').onclick = loadDemoProfile;
 
+    function persistCorsProxyField() {
+      if (!$('inp-cors-proxy')) { return; }
+      var val = $('inp-cors-proxy').value.replace(/^\s+|\s+$/g, '');
+      IPTVStorage.updateSetting('corsProxy', val);
+    }
+
+    if ($('inp-cors-proxy')) {
+      $('inp-cors-proxy').onchange = persistCorsProxyField;
+      $('inp-cors-proxy').onblur = persistCorsProxyField;
+    }
+
     $('btn-save-connect').onclick = function () {
+      persistCorsProxyField();
       var prof = collectFormProfile();
       if (!prof) { return; }
       var saved = IPTVStorage.saveProfile(prof);
@@ -3003,6 +3046,7 @@
     };
 
     $('btn-save-only').onclick = function () {
+      persistCorsProxyField();
       var prof = collectFormProfile();
       if (!prof) { return; }
       IPTVStorage.saveProfile(prof);
@@ -3328,6 +3372,12 @@
      ======================================================================== */
 
   function bootstrap() {
+    applyViewportScale();
+    window.addEventListener('resize', applyViewportScale, false);
+    window.addEventListener('orientationchange', function () {
+      window.setTimeout(applyViewportScale, 120);
+    }, false);
+
     initVirtualPools();
 
     SpatNav.init({
