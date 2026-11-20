@@ -211,14 +211,14 @@
       var dy = y - lastY;
       lastY = y;
 
-      if (!isDragging && Math.abs(y - startY) > 6) {
+      if (!isDragging && Math.abs(y - startY) > 10) {
         isDragging = true;
       }
       if (isDragging) {
         if (e.cancelable !== false && e.preventDefault) {
           e.preventDefault();
         }
-        app.suppressClickUntil = new Date().getTime() + 360;
+        app.suppressClickUntil = new Date().getTime() + 260;
         accumY += dy;
 
         var scale = app.viewportScale || 1;
@@ -240,7 +240,7 @@
 
     containerEl.addEventListener('touchend', function () {
       if (isDragging) {
-        app.suppressClickUntil = new Date().getTime() + 360;
+        app.suppressClickUntil = new Date().getTime() + 260;
       }
       isDragging = false;
       accumY = 0;

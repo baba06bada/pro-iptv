@@ -119,7 +119,7 @@ var IPTVPlayer = (function () {
     return '';
   }
 
-  function buildProxyStreamUrl(url) {
+  function buildProxyStreamUrl(url, isHlsHint) {
     if (!url) { return ''; }
     var settings = IPTVStorage.getSettings();
     var proxy = settings && settings.corsProxy ? String(settings.corsProxy).replace(/^\s+|\s+$/g, '') : '';
@@ -127,7 +127,16 @@ var IPTVPlayer = (function () {
     if (proxy.indexOf('{url}') !== -1) {
       return proxy.replace('{url}', encodeURIComponent(url));
     }
-    return proxy + encodeURIComponent(url);
+    var out = proxy + encodeURIComponent(url);
+    // For query-param proxies (e.g. ?url=), bust iOS Safari / edge cache on every play
+    // so reopening the same channel never gets a stale expired .m3u8 token playlist.
+    if (proxy.indexOf('?') !== -1) {
+      out += '&_cb=' + (new Date().getTime());
+      if (isHlsHint) {
+        out += '&ext=.m3u8';
+      }
+    }
+    return out;
   }
 
   function isHttpsContext() {
@@ -155,12 +164,17 @@ var IPTVPlayer = (function () {
     var fallback = item.fallbackUrl || '';
     var fallbackIsMp4 = endsWithCI(stripQuery(fallback), '.mp4');
 
-    // VOD & Series: play directly with videoEl.src (plus proxy fallback if HTTPS -> HTTP)
+    // VOD & Series: play directly with videoEl.src (use proxy when HTTPS page loads HTTP stream)
     if (!isLive) {
       if (httpsMixed && primary.indexOf('http://') === 0) {
         var proxVod = buildProxyStreamUrl(primary);
         if (proxVod) {
           addCandidate(list, proxVod, 'direct', '', 'VOD (Proxy)');
+          // On HTTPS pages, raw http:// VOD is blocked by Mixed Content; do not spam it after proxy
+          if (fallback && fallback.indexOf('https://') === 0) {
+            addCandidate(list, fallback, 'direct', '', 'VOD Yedek');
+          }
+          return list;
         }
       }
       addCandidate(list, primary, 'direct', '', 'VOD');
@@ -175,31 +189,34 @@ var IPTVPlayer = (function () {
       return list;
     }
 
-    // iPhone / iPad / Mac Safari: natively plays HLS (.m3u8), NOT raw .ts
+    // iPhone / iPad / Mac Safari & native-HLS desktop browsers:
+    // CRITICAL: Always use mode 'direct' (videoEl.src = url), NEVER <source> children first!
+    // Swapping <source> children on a reused <video> breaks 2nd channel load on iOS/macOS Safari
+    // and breaks desktop HLS browser extensions.
     if (nativeHlsBrowser) {
-      if (hlsUrl) {
-        if (httpsMixed && hlsUrl.indexOf('http://') === 0) {
-          var proxHls = buildProxyStreamUrl(hlsUrl);
+      var targetHls = hlsUrl || primary;
+      if (targetHls) {
+        if (httpsMixed && targetHls.indexOf('http://') === 0) {
+          var proxHls = buildProxyStreamUrl(targetHls, true);
           if (proxHls) {
-            // Explicit HLS MIME first so iOS AVPlayer recognizes query-param proxy URLs
-            addCandidate(list, proxHls, 'source', 'application/vnd.apple.mpegurl', 'HLS Proxy MIME');
             addCandidate(list, proxHls, 'direct', '', 'HLS (Proxy)');
+            // Keep candidate list lean (1 stream) to avoid triggering IPTV 1-connection lockouts
+            if (fallback && fallback !== targetHls && endsWithCI(stripQuery(fallback), '.m3u8')) {
+              var proxFb = buildProxyStreamUrl(fallback, true);
+              if (proxFb) {
+                addCandidate(list, proxFb, 'direct', '', 'HLS Yedek (Proxy)');
+              }
+            }
+            return list;
           }
         }
-        addCandidate(list, hlsUrl, 'source', 'application/vnd.apple.mpegurl', 'HLS MIME');
-        addCandidate(list, hlsUrl, 'direct', '', 'HLS (.m3u8)');
+        // Direct HTTPS or local HTTP without proxy (e.g. Mac Safari / PC HLS browser)
+        addCandidate(list, targetHls, 'direct', '', 'HLS (.m3u8)');
       }
-      if (primary && primary !== hlsUrl) {
-        if (httpsMixed && primary.indexOf('http://') === 0) {
-          var proxPrimary = buildProxyStreamUrl(primary);
-          if (proxPrimary) {
-            addCandidate(list, proxPrimary, 'source', 'application/vnd.apple.mpegurl', 'Akış Proxy MIME');
-            addCandidate(list, proxPrimary, 'direct', '', 'Akış (Proxy)');
-          }
-        }
+      if (primary && primary !== targetHls && !endsWithCI(stripQuery(primary), '.ts')) {
         addCandidate(list, primary, 'direct', '', 'Ana Akış');
       }
-      if (fallback) {
+      if (fallback && fallback !== targetHls && fallback !== primary) {
         addCandidate(list, fallback, 'direct', '', 'Yedek Akış');
       }
       return list;
@@ -397,20 +414,34 @@ var IPTVPlayer = (function () {
       }
     }
 
+    // iOS / Safari VOD incompatible container notice (.mkv / .avi are not supported by Apple AVPlayer)
+    if (!isWebOSTV() && !isLiveStream && canPlayNativeHls(videoEl) && currentItem && currentItem.url) {
+      var cleanVod = stripQuery(currentItem.url);
+      if (endsWithCI(cleanVod, '.mkv') || endsWithCI(cleanVod, '.avi')) {
+        if (callbacks.onBuffering) { callbacks.onBuffering(false, ''); }
+        if (callbacks.onError) {
+          callbacks.onError('iPhone/Safari .mkv/.avi formatını desteklemez (yalnızca .mp4 oynatabilir). Bu içerik LG TV\'de sorunsuz oynar.');
+        }
+        return;
+      }
+    }
+
     // iOS / Safari HTTPS Mixed-Content / HLS Proxy diagnostic
     if (!isWebOSTV() && canPlayNativeHls(videoEl) && isHttpsContext() && currentItem && currentItem.url && currentItem.url.indexOf('http://') === 0) {
       var hasProxy = !!buildProxyStreamUrl(currentItem.url);
       if (!hasProxy) {
         if (callbacks.onBuffering) { callbacks.onBuffering(false, ''); }
         if (callbacks.onError) {
-          callbacks.onError('iPhone Safari (HTTPS) üzerinden HTTP yayın açılamaz. HLS destekli CORS Proxy URL girin.');
+          callbacks.onError('Safari (HTTPS) üzerinden HTTP yayın açılamaz. CORS Proxy URL girin veya LG TV (.ipk) kullanın.');
         }
         return;
       }
       if (reconnectAttempts >= 1) {
         if (callbacks.onBuffering) { callbacks.onBuffering(false, ''); }
         if (callbacks.onError) {
-          callbacks.onError('iPhone Safari HLS oynatamadı: Proxy sunucunuzun .m3u8 içindeki parça linklerini de proxy üzerinden yönlendirmesi gerekir.');
+          callbacks.onError(isLiveStream
+            ? 'Yayın açılamadı: IPTV sunucusu proxy bağlantısını reddetmiş veya tek bağlantı sınırına ulaşmış olabilir (5-10 sn sonra tekrar deneyin).'
+            : 'Film/Dizi proxy üzerinden açılamadı (sunucu Range isteğini veya formatı reddetmiş olabilir).');
         }
         return;
       }
@@ -451,10 +482,11 @@ var IPTVPlayer = (function () {
   function startStallWatch(capturedToken) {
     if (stallTimer) { window.clearTimeout(stallTimer); }
     var settings = IPTVStorage.getSettings();
-    // On fallback candidates, switch faster if a format fails to decode
+    var isSafariLike = !isWebOSTV() && canPlayNativeHls(videoEl);
+    // Give Safari/iOS HLS proxy enough time to fetch playlist + initial .ts chunks
     var baseMs = (candidateIndex === 0)
-      ? Math.max(7000, (settings.bufferSeconds || 5) * 1600)
-      : 6000;
+      ? Math.max(isSafariLike ? 14000 : 7000, (settings.bufferSeconds || 5) * 1600)
+      : 7000;
     stallTimer = window.setTimeout(function () {
       if (!videoEl || !currentItem || capturedToken !== loadToken || userPaused) { return; }
       if (videoEl.readyState < 2) {
@@ -482,10 +514,13 @@ var IPTVPlayer = (function () {
     isSwitching = true;
     try {
       videoEl.pause();
-      clearVideoSources();
+      while (videoEl.firstChild) {
+        videoEl.removeChild(videoEl.firstChild);
+      }
     } catch (e) {}
 
     if (cand.mode === 'source') {
+      try { videoEl.removeAttribute('src'); } catch (e0) {}
       var sourceEl = document.createElement('source');
       sourceEl.src = cand.url;
       if (cand.mime) {
@@ -498,9 +533,11 @@ var IPTVPlayer = (function () {
       }, false);
       videoEl.appendChild(sourceEl);
     } else {
+      // Directly assign videoEl.src without empty-src reset so iOS/macOS Safari cleanly swaps AVPlayer sessions
       videoEl.src = cand.url;
     }
 
+    videoEl._activeToken = myToken;
     videoEl.playbackRate = 1.0;
     currentSpeed = 1.0;
 
@@ -608,6 +645,9 @@ var IPTVPlayer = (function () {
 
     videoEl.addEventListener('error', function () {
       if (isSwitching || !currentItem) { return; }
+      // Ignore stale error events from an empty/cleared <video> element after stop()
+      if (!videoEl.getAttribute('src') && !videoEl.firstChild) { return; }
+      if (videoEl._activeToken && videoEl._activeToken !== loadToken) { return; }
       if (speedTesting && currentSpeed !== 1.0) {
         revertSpeedWithWarning();
         return;
@@ -694,12 +734,14 @@ var IPTVPlayer = (function () {
         videoEl.muted = false;
         setMutedFlag(false);
       }
-      if (videoEl.paused || videoEl.readyState < 2) {
-        if (!videoEl.src && !videoEl.firstChild && candidates.length > 0) {
-          loadCandidateAt(candidateIndex, !!unmuteNow);
-        } else {
-          attemptPlay(!!unmuteNow, loadToken);
-        }
+      // If video previously errored or has no loaded source, perform a clean reload
+      var needsReload = (!videoEl.getAttribute('src') && !videoEl.firstChild) || !!videoEl.error || videoEl.networkState === 3;
+      if (needsReload && candidates.length > 0) {
+        reconnectAttempts = 0;
+        candidateIndex = 0;
+        loadCandidateAt(0, !!unmuteNow);
+      } else if (videoEl.paused || videoEl.readyState < 2) {
+        attemptPlay(!!unmuteNow, loadToken);
       }
     },
 
