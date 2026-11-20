@@ -3356,4 +3356,56 @@ button {
   color: #ffffff;
 }
 
+/* iOS-only VLC External Player Launcher (hidden on LG TV & PC) */
+.vlc-launch-btn {
+  display: inline-block;
+  padding: 6px 14px;
+  margin-left: 10px;
+  border-radius: 6px;
+  background-color: #ea580c;
+  color: #ffffff;
+  font-size: 20px;
+  font-weight: 700;
+  text-decoration: none;
+  border: 2px solid #fb923c;
+  white-space: nowrap;
+}
 
+.btn-vlc {
+  display: inline-block;
+  height: 58px;
+  line-height: 54px;
+  padding: 0 24px;
+  margin-right: 12px;
+  border-radius: 10px;
+  background-color: #ea580c;
+  border: 2px solid #fb923c;
+  color: #ffffff;
+  font-size: 22px;
+  font-weight: 700;
+  text-decoration: none;
+  vertical-align: middle;
+}
+
+.ep-vlc-btn {
+  display: inline-block;
+  padding: 6px 14px;
+  margin-left: 12px;
+  border-radius: 6px;
+  background-color: #ea580c;
+  border: 1px solid #fb923c;
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.osd-btn-vlc {
+  display: inline-block;
+  background-color: #ea580c;
+  border-color: #fb923c;
+  color: #ffffff;
+  text-decoration: none;
+  line-height: 46px;
+}

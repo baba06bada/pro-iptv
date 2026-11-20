@@ -187,6 +187,37 @@
     return (new Date().getTime()) < app.suppressClickUntil;
   }
 
+  function isIOSDevice() {
+    var ua = (navigator && navigator.userAgent) ? navigator.userAgent : '';
+    if (/iPad|iPhone|iPod/.test(ua)) { return true; }
+    if (ua.indexOf('Macintosh') !== -1 && navigator.maxTouchPoints && navigator.maxTouchPoints > 1) {
+      return true;
+    }
+    return false;
+  }
+
+  function buildVlcUrl(streamUrl) {
+    if (!streamUrl) { return '#'; }
+    return 'vlc-x-callback://x-callback-url/stream?url=' + encodeURIComponent(streamUrl);
+  }
+
+  function getBestExternalUrl(item) {
+    if (!item) { return ''; }
+    return item.tsUrl || item.url || item.hlsUrl || '';
+  }
+
+  function updateVlcAnchor(elId, streamUrl) {
+    var el = $(elId);
+    if (!el) { return; }
+    if (!isIOSDevice() || !streamUrl || streamUrl.indexOf('http') !== 0) {
+      hideEl(el);
+      el.href = '#';
+      return;
+    }
+    el.href = buildVlcUrl(streamUrl);
+    showEl(el);
+  }
+
   // Touch swipe (iPhone/Android/touchscreens) + Mouse / LG Magic Remote wheel scroll for virtualized pools
   function bindVirtualScroll(containerEl, logicalStepPx, onStepDelta) {
     if (!containerEl || typeof onStepDelta !== 'function') { return; }
@@ -1325,6 +1356,7 @@
     setActiveLiveChannel(ch);
     hideEl('preview-idle');
     $('preview-ch-label').textContent = pad3(ch.num) + '  ' + ch.name;
+    updateVlcAnchor('btn-preview-vlc', getBestExternalUrl(ch));
     IPTVPlayer.play(ch, true, 'preview', !!fromUserGesture);
     IPTVStorage.addRecent(ch);
     renderLiveChWindow();
@@ -1669,14 +1701,20 @@
 
   function updateDetailPlayButton() {
     if (!app.detailItem) { return; }
+    var vlcUrl = '';
     if (app.detailItem.type === 'vod') {
+      vlcUrl = getBestExternalUrl(app.detailItem);
       var prog = IPTVStorage.getWatchProgress(app.detailItem.id);
       if (prog && !prog.watched && prog.pos >= 15) {
         $('btn-detail-play').textContent = '▶ Devam Et (' + formatTimeSec(prog.pos) + ')';
+        updateVlcAnchor('btn-detail-vlc', vlcUrl);
         return;
       }
+    } else if (app.detailEpisodes && app.detailEpisodes.length > 0) {
+      vlcUrl = app.detailEpisodes[0].url || '';
     }
     $('btn-detail-play').textContent = '▶ Oynat';
+    updateVlcAnchor('btn-detail-vlc', vlcUrl);
   }
 
   function updateDetailFavButton() {
@@ -1759,6 +1797,17 @@
     durSpan.textContent = isActiveRow ? '● OYNATILIYOR' : (ep.duration || '');
 
     row.appendChild(left);
+    if (isIOSDevice() && ep.url && ep.url.indexOf('http') === 0) {
+      var vlcLink = document.createElement('a');
+      vlcLink.className = 'ep-vlc-btn';
+      vlcLink.textContent = '▶ VLC';
+      vlcLink.href = buildVlcUrl(ep.url);
+      vlcLink.onclick = function (e) {
+        if (e && e.stopPropagation) { e.stopPropagation(); }
+        IPTVPlayer.stop();
+      };
+      row.appendChild(vlcLink);
+    }
     row.appendChild(durSpan);
 
     row.onclick = function () {
@@ -1788,6 +1837,7 @@
     var box = $('detail-episodes-list');
     box.innerHTML = '';
     var eps = app.detailEpisodes || [];
+    updateDetailPlayButton();
     if (eps.length === 0) {
       box.innerHTML = '<div class="empty-col">Bu sezonda bölüm bulunamadı.</div>';
       return;
@@ -2113,6 +2163,7 @@
       $('losd-btn-recall').textContent = app.previousLiveChannel
         ? ('↺ ' + pad3(app.previousLiveChannel.num) + ' ' + app.previousLiveChannel.name.substring(0, 12))
         : '↺ Son Kanal (0)';
+      updateVlcAnchor('losd-btn-vlc', getBestExternalUrl(item));
 
       renderLiveOsdEpg(item);
       if (!app.epgCache[item.id] && !item.epg) {
@@ -2132,6 +2183,7 @@
     $('osd-btn-speed').textContent = 'Hız: ' + IPTVPlayer.getPlaybackSpeed() + 'x';
     $('osd-btn-fav').textContent = isFav ? '★ Favori' : '☆ Favori';
     $('osd-btn-playpause').textContent = IPTVPlayer.isPaused() ? '▶ Oynat' : '❚❚ Duraklat';
+    updateVlcAnchor('osd-btn-vlc', getBestExternalUrl(item));
 
     if (app.currentSeriesCtx) {
       $('osd-epg-line').textContent = app.currentSeriesCtx.seasonKey + '. Sezon · ' +
@@ -3349,6 +3401,20 @@
       resetOsdAutoHide();
     };
     $('losd-btn-back').onclick = exitFullscreen;
+
+    // iOS-only VLC external player buttons: stop Safari stream first to free IPTV 1-connection slot
+    function bindVlcStopClick(id) {
+      var el = $(id);
+      if (!el) { return; }
+      el.onclick = function (e) {
+        if (e && e.stopPropagation) { e.stopPropagation(); }
+        IPTVPlayer.stop();
+      };
+    }
+    bindVlcStopClick('btn-preview-vlc');
+    bindVlcStopClick('btn-detail-vlc');
+    bindVlcStopClick('losd-btn-vlc');
+    bindVlcStopClick('osd-btn-vlc');
 
     // Fullscreen video surface tap/click: close drawer if open, else toggle OSD (essential for iPhone/PC)
     $('fullscreen-stage').onclick = function (e) {
