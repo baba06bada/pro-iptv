@@ -117,7 +117,11 @@
     digitTimer: null,
     toastTimer: null,
     epgCache: {},
-    currentEpg: null
+    currentEpg: null,
+
+    // Viewport scale & touch drag suppression
+    viewportScale: 1,
+    suppressClickUntil: 0
   };
 
   /* ========================================================================
@@ -137,6 +141,7 @@
     var vh = window.innerHeight || document.documentElement.clientHeight || 1080;
     var isNativeTV = (Math.abs(vw - 1920) <= 2 && Math.abs(vh - 1080) <= 2);
     if (isNativeTV) {
+      app.viewportScale = 1;
       root.style.webkitTransform = 'none';
       root.style.transform = 'none';
       root.style.left = '0px';
@@ -145,6 +150,7 @@
     }
     var scale = Math.min(vw / 1920, vh / 1080);
     if (!scale || !isFinite(scale) || scale <= 0) { scale = 1; }
+    app.viewportScale = scale;
     var offsetX = Math.floor((vw - 1920 * scale) / 2);
     var offsetY = Math.floor((vh - 1080 * scale) / 2);
     if (offsetX < 0) { offsetX = 0; }
@@ -154,6 +160,105 @@
     var tf = 'scale(' + scale.toFixed(5) + ')';
     root.style.webkitTransform = tf;
     root.style.transform = tf;
+  }
+
+  // Feature-detect addEventListener passive option (pure ES5, safe on WebKit 538.2 & iOS Safari)
+  var _passiveOptionSupported = null;
+  function getNonPassiveListenerOpts() {
+    if (_passiveOptionSupported === null) {
+      _passiveOptionSupported = false;
+      try {
+        var opts = Object.defineProperty({}, 'passive', {
+          get: function () {
+            _passiveOptionSupported = true;
+            return false;
+          }
+        });
+        window.addEventListener('testpassive', null, opts);
+        window.removeEventListener('testpassive', null, opts);
+      } catch (e) {
+        _passiveOptionSupported = false;
+      }
+    }
+    return _passiveOptionSupported ? { passive: false } : false;
+  }
+
+  function isClickSuppressed() {
+    return (new Date().getTime()) < app.suppressClickUntil;
+  }
+
+  // Touch swipe (iPhone/Android/touchscreens) + Mouse / LG Magic Remote wheel scroll for virtualized pools
+  function bindVirtualScroll(containerEl, logicalStepPx, onStepDelta) {
+    if (!containerEl || typeof onStepDelta !== 'function') { return; }
+
+    var startY = 0;
+    var lastY = 0;
+    var accumY = 0;
+    var isDragging = false;
+    var listenerOpts = getNonPassiveListenerOpts();
+
+    containerEl.addEventListener('touchstart', function (e) {
+      if (!e.touches || e.touches.length !== 1) { return; }
+      startY = e.touches[0].clientY;
+      lastY = startY;
+      accumY = 0;
+      isDragging = false;
+    }, listenerOpts);
+
+    containerEl.addEventListener('touchmove', function (e) {
+      if (!e.touches || e.touches.length !== 1) { return; }
+      var y = e.touches[0].clientY;
+      var dy = y - lastY;
+      lastY = y;
+
+      if (!isDragging && Math.abs(y - startY) > 6) {
+        isDragging = true;
+      }
+      if (isDragging) {
+        if (e.cancelable !== false && e.preventDefault) {
+          e.preventDefault();
+        }
+        app.suppressClickUntil = new Date().getTime() + 360;
+        accumY += dy;
+
+        var scale = app.viewportScale || 1;
+        var stepPx = Math.max(14, Math.round((logicalStepPx || 72) * scale));
+        var steps = 0;
+        while (accumY <= -stepPx) {
+          steps += 1;
+          accumY += stepPx;
+        }
+        while (accumY >= stepPx) {
+          steps -= 1;
+          accumY -= stepPx;
+        }
+        if (steps !== 0) {
+          onStepDelta(steps);
+        }
+      }
+    }, listenerOpts);
+
+    containerEl.addEventListener('touchend', function () {
+      if (isDragging) {
+        app.suppressClickUntil = new Date().getTime() + 360;
+      }
+      isDragging = false;
+      accumY = 0;
+    }, false);
+
+    function handleWheel(e) {
+      var deltaY = (typeof e.deltaY === 'number') ? e.deltaY : (typeof e.wheelDelta === 'number' ? -e.wheelDelta : 0);
+      if (deltaY === 0) { return; }
+      if (e.preventDefault) { e.preventDefault(); }
+      var dir = deltaY > 0 ? 1 : -1;
+      onStepDelta(dir);
+    }
+
+    if ('onwheel' in document) {
+      containerEl.addEventListener('wheel', handleWheel, listenerOpts);
+    } else {
+      containerEl.addEventListener('mousewheel', handleWheel, false);
+    }
   }
 
   function showEl(el) {
@@ -763,6 +868,7 @@
         row.setAttribute('data-slot', String(slot));
         row.innerHTML = '<span class="cat-name"></span><span class="cat-count"></span>';
         row.onclick = function () {
+          if (isClickSuppressed()) { return; }
           var idx = app.liveCatStart + slot;
           if (idx >= 0 && idx < app.liveCatList.length) {
             attemptSelectLiveCategory(app.liveCatList[idx]);
@@ -834,6 +940,7 @@
         };
 
         row.onclick = function () {
+          if (isClickSuppressed()) { return; }
           var idx = app.liveChStart + slot;
           if (idx >= 0 && idx < app.liveFilteredChannels.length) {
             handleChannelActivate(app.liveFilteredChannels[idx]);
@@ -893,6 +1000,7 @@
         row._refs = { num: numEl, img: img, name: nameEl, epgMini: epgMini, fav: favEl };
 
         row.onclick = function () {
+          if (isClickSuppressed()) { return; }
           var idx = app.drawerStart + slot;
           if (idx >= 0 && idx < app.liveFilteredChannels.length) {
             var targetCh = app.liveFilteredChannels[idx];
@@ -923,6 +1031,7 @@
         row.setAttribute('data-slot', String(slot));
         row.innerHTML = '<span class="cat-name"></span><span class="cat-count"></span>';
         row.onclick = function () {
+          if (isClickSuppressed()) { return; }
           var idx = app.mediaCatStart + slot;
           if (idx >= 0 && idx < app.mediaCatList.length) {
             selectMediaCategory(app.mediaCatList[idx].key);
@@ -993,6 +1102,7 @@
         };
 
         card.onclick = function () {
+          if (isClickSuppressed()) { return; }
           var idx = app.mediaRowStart * GRID_COLS + slot;
           if (idx >= 0 && idx < app.mediaFilteredItems.length) {
             openMediaDetail(app.mediaFilteredItems[idx]);
@@ -1648,6 +1758,7 @@
     row.appendChild(durSpan);
 
     row.onclick = function () {
+      if (isClickSuppressed()) { return; }
       var ctx = {
         seriesItem: seriesItem,
         seasonKey: seasonKey,
@@ -3233,23 +3344,48 @@
       toggleFavoriteShortcut();
       resetOsdAutoHide();
     };
+    $('losd-btn-back').onclick = exitFullscreen;
 
-    // INTERACTIVE SEEK BAR (Magic Remote click / hover scrub)
+    // Fullscreen video surface tap/click: close drawer if open, else toggle OSD (essential for iPhone/PC)
+    $('fullscreen-stage').onclick = function (e) {
+      if (e.target !== $('fullscreen-stage')) { return; }
+      if (app.drawerOpen) {
+        closeChannelDrawer();
+        return;
+      }
+      if (app.osdVisible) {
+        hideOsd();
+      } else {
+        showOsd();
+      }
+    };
+
+    // INTERACTIVE SEEK BAR (Magic Remote click / hover scrub + iPhone touch drag)
     var seekBarEl = $('osd-seek-bar');
-    seekBarEl.onmousemove = function (e) {
+    function seekBarFromClientX(clientX, shouldCommit) {
       if (IPTVPlayer.isLive()) { return; }
       var dur = IPTVPlayer.getDuration();
       if (!dur || !isFinite(dur)) { return; }
       var rect = seekBarEl.getBoundingClientRect();
       if (!rect || rect.width <= 0) { return; }
-      var ratio = (e.clientX - rect.left) / rect.width;
+      var ratio = (clientX - rect.left) / rect.width;
       if (ratio < 0) { ratio = 0; }
       if (ratio > 1) { ratio = 1; }
+      var target = ratio * dur;
       var tip = $('osd-seek-tooltip');
-      tip.textContent = formatTimeSec(ratio * dur);
+      tip.textContent = formatTimeSec(target);
       tip.style.left = (ratio * 100) + '%';
       showEl(tip);
+      if (shouldCommit) {
+        if (IPTVPlayer.seekTo(target)) {
+          updateSeekBarUI(target, dur);
+          saveCurrentMediaProgress(true);
+        }
+      }
       resetOsdAutoHide();
+    }
+    seekBarEl.onmousemove = function (e) {
+      seekBarFromClientX(e.clientX, false);
     };
     seekBarEl.onmouseleave = function () {
       if (SpatNav.getCurrent() !== seekBarEl) {
@@ -3257,21 +3393,21 @@
       }
     };
     seekBarEl.onclick = function (e) {
-      if (IPTVPlayer.isLive()) { return; }
-      var dur = IPTVPlayer.getDuration();
-      if (!dur || !isFinite(dur)) { return; }
-      var rect = seekBarEl.getBoundingClientRect();
-      if (!rect || rect.width <= 0) { return; }
-      var ratio = (e.clientX - rect.left) / rect.width;
-      if (ratio < 0) { ratio = 0; }
-      if (ratio > 1) { ratio = 1; }
-      var target = ratio * dur;
-      if (IPTVPlayer.seekTo(target)) {
-        updateSeekBarUI(target, dur);
-        saveCurrentMediaProgress(true);
-        resetOsdAutoHide();
-      }
+      seekBarFromClientX(e.clientX, true);
     };
+    seekBarEl.addEventListener('touchstart', function (e) {
+      if (!e.touches || e.touches.length !== 1) { return; }
+      if (e.cancelable !== false && e.preventDefault) { e.preventDefault(); }
+      seekBarFromClientX(e.touches[0].clientX, true);
+    }, getNonPassiveListenerOpts());
+    seekBarEl.addEventListener('touchmove', function (e) {
+      if (!e.touches || e.touches.length !== 1) { return; }
+      if (e.cancelable !== false && e.preventDefault) { e.preventDefault(); }
+      seekBarFromClientX(e.touches[0].clientX, true);
+    }, getNonPassiveListenerOpts());
+    seekBarEl.addEventListener('touchend', function () {
+      hideEl('osd-seek-tooltip');
+    }, false);
 
     // VOD & SERIES OSD button bindings
     $('osd-btn-rw').onclick = function () { scrubSeekBarBy(-10); };
@@ -3317,6 +3453,7 @@
       toggleFavoriteShortcut();
       resetOsdAutoHide();
     };
+    $('osd-btn-back').onclick = exitFullscreen;
 
     // Auto-Next Episode card bindings
     $('btn-next-ep-now').onclick = function () {
@@ -3363,6 +3500,85 @@
     $('btn-tracks-close').onclick = closeTrackModal;
     $('btn-exit-confirm').onclick = exitApplication;
     $('btn-exit-cancel').onclick = closeExitModal;
+
+    // Touch swipe (iPhone/touchscreens) + Mouse/Magic Remote scroll wheel for all 7 virtualized lists
+    bindVirtualScroll($('live-cat-list'), 74, function (delta) {
+      var maxStart = Math.max(0, app.liveCatList.length - CAT_VISIBLE_COUNT);
+      var next = app.liveCatStart + delta;
+      if (next < 0) { next = 0; }
+      if (next > maxStart) { next = maxStart; }
+      if (next !== app.liveCatStart) {
+        app.liveCatStart = next;
+        renderLiveCatWindow();
+      }
+    });
+
+    bindVirtualScroll($('live-ch-list'), 76, function (delta) {
+      var maxStart = Math.max(0, app.liveFilteredChannels.length - CH_VISIBLE_COUNT);
+      var next = app.liveChStart + delta;
+      if (next < 0) { next = 0; }
+      if (next > maxStart) { next = maxStart; }
+      if (next !== app.liveChStart) {
+        app.liveChStart = next;
+        renderLiveChWindow();
+      }
+    });
+
+    bindVirtualScroll($('drawer-ch-list'), 76, function (delta) {
+      var maxStart = Math.max(0, app.liveFilteredChannels.length - DRAWER_VISIBLE_COUNT);
+      var next = app.drawerStart + delta;
+      if (next < 0) { next = 0; }
+      if (next > maxStart) { next = maxStart; }
+      if (next !== app.drawerStart) {
+        app.drawerStart = next;
+        renderDrawerWindow();
+      }
+    });
+
+    bindVirtualScroll($('media-cat-list'), 74, function (delta) {
+      var maxStart = Math.max(0, app.mediaCatList.length - CAT_VISIBLE_COUNT);
+      var next = app.mediaCatStart + delta;
+      if (next < 0) { next = 0; }
+      if (next > maxStart) { next = maxStart; }
+      if (next !== app.mediaCatStart) {
+        app.mediaCatStart = next;
+        renderMediaCatWindow();
+      }
+    });
+
+    bindVirtualScroll($('media-poster-grid'), 220, function (delta) {
+      var totalRows = Math.ceil(app.mediaFilteredItems.length / GRID_COLS);
+      var maxRow = Math.max(0, totalRows - GRID_ROWS);
+      var next = app.mediaRowStart + delta;
+      if (next < 0) { next = 0; }
+      if (next > maxRow) { next = maxRow; }
+      if (next !== app.mediaRowStart) {
+        app.mediaRowStart = next;
+        renderMediaGridWindow();
+      }
+    });
+
+    bindVirtualScroll($('detail-episodes-list'), 74, function (delta) {
+      var maxStart = Math.max(0, app.detailEpisodes.length - DETAIL_EP_VISIBLE);
+      var next = app.detailEpStart + delta;
+      if (next < 0) { next = 0; }
+      if (next > maxStart) { next = maxStart; }
+      if (next !== app.detailEpStart) {
+        app.detailEpStart = next;
+        renderSeriesEpisodesWindow();
+      }
+    });
+
+    bindVirtualScroll($('ep-modal-list'), 72, function (delta) {
+      var maxStart = Math.max(0, app.epModalEpisodes.length - MODAL_EP_VISIBLE);
+      var next = app.epModalStart + delta;
+      if (next < 0) { next = 0; }
+      if (next > maxStart) { next = maxStart; }
+      if (next !== app.epModalStart) {
+        app.epModalStart = next;
+        renderEpisodesModalList();
+      }
+    });
 
     document.addEventListener('keydown', handleKeyDown, false);
   }

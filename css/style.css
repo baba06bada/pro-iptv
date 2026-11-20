@@ -3317,3 +3317,43 @@ button {
   padding: 20px 30px;
 }
 
+/* ==========================================================================
+   TOUCH SWIPE & MOUSE WHEEL SCROLLING (IPHONE SAFARI / PC / MAGIC REMOTE)
+   ========================================================================== */
+
+.virtual-list,
+.drawer-ch-list,
+.poster-grid,
+.episodes-list,
+.ep-modal-list,
+.osd-seek-bar {
+  touch-action: none;
+  -ms-touch-action: none;
+}
+
+.profile-list,
+.search-results-list,
+.hide-cats-list {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+#player-osd .osd-btn {
+  padding: 0 13px;
+  font-size: 19px;
+  margin-right: 8px;
+}
+
+.osd-btn-exit {
+  margin-left: auto;
+  background-color: #29151c;
+  border-color: #6b2936;
+  color: #fca5a5;
+}
+
+.osd-btn-exit.is-focused {
+  background-color: #dc2626;
+  color: #ffffff;
+}
+
+

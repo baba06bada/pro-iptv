@@ -180,13 +180,28 @@ var IPTVPlayer = (function () {
       if (hlsUrl) {
         if (httpsMixed && hlsUrl.indexOf('http://') === 0) {
           var proxHls = buildProxyStreamUrl(hlsUrl);
-          if (proxHls) { addCandidate(list, proxHls, 'direct', '', 'HLS (Proxy)'); }
+          if (proxHls) {
+            // Explicit HLS MIME first so iOS AVPlayer recognizes query-param proxy URLs
+            addCandidate(list, proxHls, 'source', 'application/vnd.apple.mpegurl', 'HLS Proxy MIME');
+            addCandidate(list, proxHls, 'direct', '', 'HLS (Proxy)');
+          }
         }
-        addCandidate(list, hlsUrl, 'direct', '', 'HLS (.m3u8)');
         addCandidate(list, hlsUrl, 'source', 'application/vnd.apple.mpegurl', 'HLS MIME');
+        addCandidate(list, hlsUrl, 'direct', '', 'HLS (.m3u8)');
       }
-      addCandidate(list, primary, 'direct', '', 'Ana Akış');
-      addCandidate(list, fallback, 'direct', '', 'Yedek Akış');
+      if (primary && primary !== hlsUrl) {
+        if (httpsMixed && primary.indexOf('http://') === 0) {
+          var proxPrimary = buildProxyStreamUrl(primary);
+          if (proxPrimary) {
+            addCandidate(list, proxPrimary, 'source', 'application/vnd.apple.mpegurl', 'Akış Proxy MIME');
+            addCandidate(list, proxPrimary, 'direct', '', 'Akış (Proxy)');
+          }
+        }
+        addCandidate(list, primary, 'direct', '', 'Ana Akış');
+      }
+      if (fallback) {
+        addCandidate(list, fallback, 'direct', '', 'Yedek Akış');
+      }
       return list;
     }
 
@@ -377,6 +392,25 @@ var IPTVPlayer = (function () {
         if (callbacks.onBuffering) { callbacks.onBuffering(false, ''); }
         if (callbacks.onError) {
           callbacks.onError('Masaüstü tarayıcı .ts/.m3u8 canlı yayını oynatmaz; LG webOS 2.2.3 TV üzerinde doğrudan .ts olarak oynar.');
+        }
+        return;
+      }
+    }
+
+    // iOS / Safari HTTPS Mixed-Content / HLS Proxy diagnostic
+    if (!isWebOSTV() && canPlayNativeHls(videoEl) && isHttpsContext() && currentItem && currentItem.url && currentItem.url.indexOf('http://') === 0) {
+      var hasProxy = !!buildProxyStreamUrl(currentItem.url);
+      if (!hasProxy) {
+        if (callbacks.onBuffering) { callbacks.onBuffering(false, ''); }
+        if (callbacks.onError) {
+          callbacks.onError('iPhone Safari (HTTPS) üzerinden HTTP yayın açılamaz. HLS destekli CORS Proxy URL girin.');
+        }
+        return;
+      }
+      if (reconnectAttempts >= 1) {
+        if (callbacks.onBuffering) { callbacks.onBuffering(false, ''); }
+        if (callbacks.onError) {
+          callbacks.onError('iPhone Safari HLS oynatamadı: Proxy sunucunuzun .m3u8 içindeki parça linklerini de proxy üzerinden yönlendirmesi gerekir.');
         }
         return;
       }
@@ -604,6 +638,14 @@ var IPTVPlayer = (function () {
     init: function (opts) {
       videoEl = document.getElementById('main-video');
       stageLayerEl = document.getElementById('video-stage-layer');
+      if (videoEl) {
+        try {
+          videoEl.playsInline = true;
+          videoEl.setAttribute('playsinline', '');
+          videoEl.setAttribute('webkit-playsinline', '');
+          videoEl.setAttribute('x-webkit-airplay', 'allow');
+        } catch (e) {}
+      }
       if (opts) {
         callbacks.onBuffering = opts.onBuffering || null;
         callbacks.onPlaying = opts.onPlaying || null;
