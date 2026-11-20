@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1920, height=1080, initial-scale=1.0, user-scalable=no">
+  <title>Pro IPTV</title>
+  <link rel="stylesheet" type="text/css" href="css/style.css">
+<script src="/_aistudio-iframe.js?v=29045eb3"></script></head>
+<body>
+  <div id="app-root">
+    <!-- SPLASH / LOADING OVERLAY -->
+    <div id="screen-loading" class="screen-overlay is-hidden">
+      <div class="loading-box">
+        <div class="loading-spinner"></div>
+        <div id="loading-title" class="loading-title">Pro IPTV</div>
+        <div id="loading-status" class="loading-status">Yayın listesi yükleniyor...</div>
+        <div class="loading-bar-track">
+          <div id="loading-bar-fill" class="loading-bar-fill"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PLAYLIST / ACCOUNT MANAGER SCREEN -->
+    <div id="screen-manager" class="screen is-hidden">
+      <div class="manager-header">
+        <div class="brand-lockup">
+          <span class="brand-mark">PRO</span>
+          <span class="brand-name">IPTV PLAYER</span>
+        </div>
+        <div class="header-right">
+          <div id="manager-clock" class="clock-text">00:00</div>
+          <div id="manager-date" class="date-text">---</div>
+        </div>
+      </div>
+
+      <div class="manager-body">
+        <!-- LEFT COLUMN: SAVED PROFILES -->
+        <div class="manager-col-left">
+          <div class="panel-heading">Kayıtlı Profiller &amp; Listeler</div>
+          <div id="profile-list-empty" class="empty-box is-hidden">
+            <div class="empty-icon">&#128250;</div>
+            <div class="empty-title">Henüz kayıtlı liste yok</div>
+            <div class="empty-desc">Sağdaki formdan Xtream Codes veya M3U URL ekleyin ya da aşağıdan demo listeyi anında yükleyin.</div>
+          </div>
+          <div id="profile-list" class="profile-list"></div>
+
+          <div class="demo-bar">
+            <button id="btn-load-demo" class="btn-demo" data-focusable="true" data-zone="manager">
+              &#9654; Örnek Demo Liste Yükle (Anında Test Et)
+            </button>
+          </div>
+        </div>
+
+        <!-- RIGHT COLUMN: ADD / EDIT FORM -->
+        <div class="manager-col-right">
+          <div class="tab-bar">
+            <button id="tab-xtream" class="tab-btn is-active" data-focusable="true" data-zone="manager">Xtream Codes API</button>
+            <button id="tab-m3u" class="tab-btn" data-focusable="true" data-zone="manager">M3U / M3U8 URL</button>
+          </div>
+
+          <div id="form-title" class="form-subtitle">Yeni Hesap Ekle</div>
+
+          <!-- XTREAM FORM -->
+          <div id="form-xtream" class="form-group-wrap">
+            <div class="field-row">
+              <label class="field-label" for="inp-xt-name">Hesap Adı</label>
+              <input id="inp-xt-name" type="text" class="tv-input" placeholder="Örn: Ev IPTV" data-focusable="true" data-zone="manager">
+            </div>
+            <div class="field-row">
+              <label class="field-label" for="inp-xt-url">Sunucu URL (http://...)</label>
+              <input id="inp-xt-url" type="text" class="tv-input" placeholder="http://sunucu.com:8080" data-focusable="true" data-zone="manager">
+            </div>
+            <div class="field-row">
+              <label class="field-label" for="inp-xt-user">Kullanıcı Adı</label>
+              <input id="inp-xt-user" type="text" class="tv-input" placeholder="kullanici_adi" data-focusable="true" data-zone="manager">
+            </div>
+            <div class="field-row">
+              <label class="field-label" for="inp-xt-pass">Şifre</label>
+              <input id="inp-xt-pass" type="password" class="tv-input" placeholder="••••••••" data-focusable="true" data-zone="manager">
+            </div>
+          </div>
+
+          <!-- M3U FORM -->
+          <div id="form-m3u" class="form-group-wrap is-hidden">
+            <div class="field-row">
+              <label class="field-label" for="inp-m3u-name">Liste Adı</label>
+              <input id="inp-m3u-name" type="text" class="tv-input" placeholder="Örn: Ulusal M3U Listem" data-focusable="true" data-zone="manager">
+            </div>
+            <div class="field-row">
+              <label class="field-label" for="inp-m3u-url">M3U / M3U8 Bağlantısı</label>
+              <input id="inp-m3u-url" type="text" class="tv-input" placeholder="http://sunucu.com/playlist.m3u8" data-focusable="true" data-zone="manager">
+            </div>
+            <div class="form-note">
+              Büyük M3U listeleri (10.000+ kanal) satır satır bellek korumalı olarak işlenir.
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button id="btn-save-connect" class="btn-primary" data-focusable="true" data-zone="manager">Kaydet ve Bağlan</button>
+            <button id="btn-save-only" class="btn-secondary" data-focusable="true" data-zone="manager">Sadece Kaydet</button>
+            <button id="btn-cancel-edit" class="btn-ghost is-hidden" data-focusable="true" data-zone="manager">İptal</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="manager-footer">
+        <span class="hint-item"><span class="key-cap">OK</span> Seç / Yaz</span>
+        <span class="hint-item"><span class="key-cap">YÖN</span> Gezin</span>
+        <span class="hint-item"><span class="key-cap">GERİ</span> Çıkış / Kapat</span>
+      </div>
+    </div>
+
+    <!-- MAIN DASHBOARD SCREEN -->
+    <div id="screen-dashboard" class="screen is-hidden">
+      <!-- LEFT ICON SIDEBAR -->
+      <div id="sidebar" class="sidebar">
+        <div class="sidebar-logo">PRO</div>
+        <div class="sidebar-nav">
+          <button id="nav-live" class="nav-btn is-active" data-nav="live" data-focusable="true" data-zone="sidebar">
+            <span class="nav-icon icon-tv"></span>
+            <span class="nav-label">Canlı TV</span>
+          </button>
+          <button id="nav-vod" class="nav-btn" data-nav="vod" data-focusable="true" data-zone="sidebar">
+            <span class="nav-icon icon-movie"></span>
+            <span class="nav-label">Filmler</span>
+          </button>
+          <button id="nav-series" class="nav-btn" data-nav="series" data-focusable="true" data-zone="sidebar">
+            <span class="nav-icon icon-series"></span>
+            <span class="nav-label">Diziler</span>
+          </button>
+          <button id="nav-favorites" class="nav-btn" data-nav="favorites" data-focusable="true" data-zone="sidebar">
+            <span class="nav-icon icon-star"></span>
+            <span class="nav-label">Favoriler</span>
+          </button>
+          <button id="nav-recent" class="nav-btn" data-nav="recent" data-focusable="true" data-zone="sidebar">
+            <span class="nav-icon icon-clock"></span>
+            <span class="nav-label">Son İzlenen</span>
+          </button>
+          <button id="nav-search" class="nav-btn" data-nav="search" data-focusable="true" data-zone="sidebar">
+            <span class="nav-icon icon-search"></span>
+            <span class="nav-label">Arama</span>
+          </button>
+          <button id="nav-settings" class="nav-btn" data-nav="settings" data-focusable="true" data-zone="sidebar">
+            <span class="nav-icon icon-settings"></span>
+            <span class="nav-label">Ayarlar</span>
+          </button>
+        </div>
+        <div class="sidebar-bottom">
+          <button id="nav-accounts" class="nav-btn nav-btn-small" data-nav="accounts" data-focusable="true" data-zone="sidebar">
+            <span class="nav-icon icon-user"></span>
+            <span class="nav-label">Hesaplar</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- MAIN WORKSPACE AREA (1810px wide) -->
+      <div id="workspace" class="workspace">
+        <!-- TOP BAR -->
+        <div class="dash-topbar">
+          <div class="topbar-left">
+            <span id="dash-section-title" class="section-title">Canlı TV</span>
+            <span class="topbar-sep">|</span>
+            <span id="dash-profile-name" class="profile-indicator">Demo Liste</span>
+          </div>
+          <div class="topbar-right">
+            <span class="color-hint"><span class="dot dot-red"></span> Favori</span>
+            <span class="color-hint"><span class="dot dot-green"></span> Arama</span>
+            <span class="color-hint"><span class="dot dot-yellow"></span> Kategori</span>
+            <span class="color-hint"><span class="dot dot-blue"></span> Ayar</span>
+            <span class="topbar-sep">|</span>
+            <span id="dash-clock" class="clock-text">00:00</span>
+            <span id="dash-date" class="date-text">---</span>
+          </div>
+        </div>
+
+        <!-- VIEW: LIVE TV (3-COLUMN PRO LAYOUT) -->
+        <div id="view-live" class="dash-view">
+          <!-- COL 1: CATEGORIES (Virtual Pool) -->
+          <div class="live-col-cats">
+            <div class="col-header">
+              <span>Kategoriler</span>
+              <span id="live-cat-counter" class="col-count">0</span>
+            </div>
+            <div id="live-cat-list" class="virtual-list cat-list"></div>
+          </div>
+
+          <!-- COL 2: CHANNELS (Virtual Pool, max 16 DOM nodes) -->
+          <div class="live-col-channels">
+            <div class="col-header">
+              <span id="live-ch-header-title">Tüm Kanallar</span>
+              <span id="live-ch-counter" class="col-count">0 / 0</span>
+            </div>
+            <div id="live-ch-empty" class="empty-col is-hidden">Bu kategoride kanal bulunamadı.</div>
+            <div id="live-ch-list" class="virtual-list channel-list"></div>
+          </div>
+
+          <!-- COL 3: PREVIEW PLAYER + EPG -->
+          <div class="live-col-right">
+            <div id="preview-box" class="preview-box" data-focusable="true" data-zone="live-preview">
+              <div id="preview-idle" class="preview-idle">
+                <div class="preview-idle-icon">&#9654;</div>
+                <div class="preview-idle-text">Önizlemek için bir kanal seçin</div>
+              </div>
+              <div id="preview-buffering" class="preview-buffering is-hidden">
+                <div class="mini-spinner"></div>
+                <span id="preview-buffering-text">Bağlanıyor...</span>
+              </div>
+              <div class="preview-overlay-bar">
+                <span id="preview-ch-label" class="preview-ch-label">Kanal seçilmedi</span>
+                <span class="preview-fs-hint">OK: Tam Ekran</span>
+              </div>
+            </div>
+
+            <!-- EPG INFO PANEL -->
+            <div class="epg-panel">
+              <div class="epg-header">
+                <span class="epg-heading">Yayın Akışı (EPG)</span>
+                <span id="epg-ch-meta" class="epg-ch-meta">---</span>
+              </div>
+              <div class="epg-now-block">
+                <div class="epg-now-top">
+                  <span id="epg-now-title" class="epg-now-title">Yayın bilgisi seçili kanala göre görüntülenir</span>
+                  <span id="epg-now-time" class="epg-time">--:-- - --:--</span>
+                </div>
+                <div class="epg-progress-track">
+                  <div id="epg-progress-fill" class="epg-progress-fill"></div>
+                </div>
+                <div id="epg-now-desc" class="epg-desc">---</div>
+              </div>
+              <div class="epg-next-block">
+                <div class="epg-next-label">Sıradaki Program</div>
+                <div class="epg-next-row">
+                  <span id="epg-next-title" class="epg-next-title">---</span>
+                  <span id="epg-next-time" class="epg-time">--:-- - --:--</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- VIEW: VOD / SERIES POSTER GRID -->
+        <div id="view-media" class="dash-view is-hidden">
+          <div class="media-col-cats">
+            <div class="col-header">
+              <span id="media-cat-heading">Kategoriler</span>
+              <span id="media-cat-counter" class="col-count">0</span>
+            </div>
+            <div id="media-cat-list" class="virtual-list cat-list"></div>
+          </div>
+          <div class="media-col-grid">
+            <div class="col-header">
+              <span id="media-grid-heading">Tümü</span>
+              <span id="media-grid-counter" class="col-count">0</span>
+            </div>
+            <div id="media-grid-empty" class="empty-col is-hidden">Bu kategoride içerik bulunamadı.</div>
+            <div id="media-poster-grid" class="poster-grid"></div>
+          </div>
+        </div>
+
+        <!-- VIEW: VOD / SERIES DETAIL SCREEN -->
+        <div id="view-detail" class="dash-view is-hidden">
+          <div class="detail-container">
+            <div class="detail-top">
+              <div class="detail-poster-wrap">
+                <img id="detail-poster" class="detail-poster" src="" alt="">
+                <div id="detail-poster-fallback" class="poster-fallback-big is-hidden">PRO IPTV</div>
+              </div>
+              <div class="detail-info">
+                <div id="detail-title" class="detail-title">Başlık</div>
+                <div id="detail-meta" class="detail-meta">2024 &middot; IMDb 8.1 &middot; Aksiyon</div>
+                <div id="detail-credits" class="detail-credits">Yönetmen: --- &middot; Oyuncular: ---</div>
+                <div id="detail-plot" class="detail-plot">Açıklama yükleniyor...</div>
+                <div class="detail-actions">
+                  <button id="btn-detail-play" class="btn-primary" data-focusable="true" data-zone="detail">&#9654; Oynat</button>
+                  <button id="btn-detail-fav" class="btn-secondary" data-focusable="true" data-zone="detail">&#9733; Favorilere Ekle</button>
+                  <button id="btn-detail-back" class="btn-ghost" data-focusable="true" data-zone="detail">&larr; Listeye Dön</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- SERIES SEASONS & EPISODES -->
+            <div id="detail-series-area" class="detail-series-area is-hidden">
+              <div class="series-seasons-bar">
+                <span class="series-label">Sezonlar:</span>
+                <div id="detail-seasons-list" class="seasons-list"></div>
+              </div>
+              <div id="detail-episodes-list" class="episodes-list"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- VIEW: SEARCH -->
+        <div id="view-search" class="dash-view is-hidden">
+          <div class="search-panel">
+            <div class="search-bar-row">
+              <input id="inp-search" type="text" class="tv-input search-input" placeholder="Kanal, film veya dizi adı yazın..." data-focusable="true" data-zone="search">
+              <button id="btn-search-clear" class="btn-secondary" data-focusable="true" data-zone="search">Temizle</button>
+            </div>
+            <div class="search-filter-row">
+              <button id="sfilt-all" class="filter-tab is-active" data-sfilt="all" data-focusable="true" data-zone="search">Tümü</button>
+              <button id="sfilt-live" class="filter-tab" data-sfilt="live" data-focusable="true" data-zone="search">Canlı TV</button>
+              <button id="sfilt-vod" class="filter-tab" data-sfilt="vod" data-focusable="true" data-zone="search">Filmler</button>
+              <button id="sfilt-series" class="filter-tab" data-sfilt="series" data-focusable="true" data-zone="search">Diziler</button>
+              <span id="search-count" class="search-count">0 sonuç</span>
+            </div>
+            <div id="search-results" class="search-results-list"></div>
+          </div>
+        </div>
+
+        <!-- VIEW: SETTINGS & PARENTAL CONTROL -->
+        <div id="view-settings" class="dash-view is-hidden">
+          <div class="settings-layout">
+            <div class="settings-col">
+              <div class="panel-heading">Oynatıcı &amp; Sistem Ayarları</div>
+
+              <div class="setting-row setting-row-compact" id="set-liveformat" data-focusable="true" data-zone="settings">
+                <div class="setting-info">
+                  <div class="setting-title">Canlı Yayın Formatı (webOS 2.2.3)</div>
+                  <div class="setting-desc">Doğrudan MPEG-TS (.ts) önerilir; hata olursa diğerine geçer.</div>
+                </div>
+                <div id="val-liveformat" class="setting-val">MPEG-TS (.ts)</div>
+              </div>
+
+              <div class="setting-row setting-row-compact" id="set-epgoffset" data-focusable="true" data-zone="settings">
+                <div class="setting-info">
+                  <div class="setting-title">EPG Yayın Akışı Saat Farkı</div>
+                  <div class="setting-desc">Yayın saatleri kayıksa -3 ile +3 saat arasında düzeltin.</div>
+                </div>
+                <div id="val-epgoffset" class="setting-val">0 saat</div>
+              </div>
+
+              <div class="setting-row setting-row-compact" id="set-startup-live" data-focusable="true" data-zone="settings">
+                <div class="setting-info">
+                  <div class="setting-title">Açılışta Son Kanalı Tam Ekran Başlat</div>
+                  <div class="setting-desc">Uygulama açılınca doğrudan son izlenen canlı kanalı açar.</div>
+                </div>
+                <div id="val-startup-live" class="setting-val">KAPALI</div>
+              </div>
+
+              <div class="setting-row setting-row-compact" id="set-sleep" data-focusable="true" data-zone="settings">
+                <div class="setting-info">
+                  <div class="setting-title">Uyku Zamanlayıcısı (Sleep Timer)</div>
+                  <div class="setting-desc">Süre dolunca yayını durdurur ve ekran koruyucuyu serbest bırakır.</div>
+                </div>
+                <div id="val-sleep" class="setting-val">KAPALI</div>
+              </div>
+
+              <div class="setting-row setting-row-compact" id="set-reconnect" data-focusable="true" data-zone="settings">
+                <div class="setting-info">
+                  <div class="setting-title">Otomatik Yeniden Bağlanma</div>
+                  <div class="setting-desc">Yayın donarsa veya koparsa otomatik olarak tekrar bağlanır.</div>
+                </div>
+                <div id="val-reconnect" class="setting-val">AÇIK</div>
+              </div>
+
+              <div class="setting-row setting-row-compact" id="set-autopreview" data-focusable="true" data-zone="settings">
+                <div class="setting-info">
+                  <div class="setting-title">Yön Tuşunda Otomatik Önizleme</div>
+                  <div class="setting-desc">Kapalıyken OK basınca küçük ekranda açılır (Magic Remote etkilenmez).</div>
+                </div>
+                <div id="val-autopreview" class="setting-val">KAPALI</div>
+              </div>
+
+              <div class="setting-row setting-row-compact" id="set-buffer" data-focusable="true" data-zone="settings">
+                <div class="setting-info">
+                  <div class="setting-title">Tamponlama (Buffer) Süresi</div>
+                  <div class="setting-desc">Yayın başlangıcında ve kopmalarda bekleme eşiği.</div>
+                </div>
+                <div id="val-buffer" class="setting-val">5 sn</div>
+              </div>
+
+              <div class="setting-row setting-row-compact" id="set-parental-toggle" data-focusable="true" data-zone="settings">
+                <div class="setting-info">
+                  <div class="setting-title">Yetişkin (+18) Kategori Kilidi</div>
+                  <div class="setting-desc">+18 / Adult / XXX kategorileri için 4 haneli PIN sorar.</div>
+                </div>
+                <div id="val-parental" class="setting-val">AÇIK</div>
+              </div>
+
+              <div class="setting-row setting-row-compact" id="set-parental-pin" data-focusable="true" data-zone="settings">
+                <div class="setting-info">
+                  <div class="setting-title">Ebeveyn PIN Kodunu Değiştir</div>
+                  <div class="setting-desc">Varsayılan PIN: 0000</div>
+                </div>
+                <div id="val-pin-display" class="setting-val">****</div>
+              </div>
+
+              <div class="setting-row setting-row-compact" id="set-manage-accounts" data-focusable="true" data-zone="settings">
+                <div class="setting-info">
+                  <div class="setting-title">Hesap ve Playlist Yöneticisi</div>
+                  <div class="setting-desc">Yeni Xtream/M3U ekle veya profil değiştir.</div>
+                </div>
+                <div class="setting-val">AÇ &rarr;</div>
+              </div>
+            </div>
+
+            <div class="settings-col">
+              <!-- XTREAM SUBSCRIPTION INFO & FORCE REFRESH -->
+              <div class="panel-heading">Abonelik &amp; Liste Bilgisi</div>
+              <div id="account-info-card" class="account-info-card">
+                <div class="acc-grid">
+                  <div class="acc-cell">
+                    <div class="acc-label">Hesap / Durum</div>
+                    <div id="acc-user-status" class="acc-value">---</div>
+                  </div>
+                  <div class="acc-cell">
+                    <div class="acc-label">Bitiş Tarihi &amp; Kalan</div>
+                    <div id="acc-expiry" class="acc-value">---</div>
+                  </div>
+                  <div class="acc-cell">
+                    <div class="acc-label">Aktif / Maks. Cihaz</div>
+                    <div id="acc-conns" class="acc-value">---</div>
+                  </div>
+                  <div class="acc-cell">
+                    <div class="acc-label">İçerik Özeti</div>
+                    <div id="acc-counts" class="acc-value">---</div>
+                  </div>
+                </div>
+                <div class="acc-actions">
+                  <button id="btn-refresh-playlist" class="btn-primary btn-sm" data-focusable="true" data-zone="settings">&#8635; Yayın Listesini Yenile</button>
+                </div>
+              </div>
+
+              <div class="panel-heading panel-heading-mt">Kategori Gizleme (Canlı TV)</div>
+              <div class="setting-subnote">İstemediğiniz ülke veya tür gruplarını gizlemek için OK tuşuna basın.</div>
+              <div id="settings-hide-cats" class="hide-cats-list hide-cats-compact"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PERMANENT HARDWARE VIDEO LAYER (NEVER MOVED IN DOM - PREVENTS WEBOS STARFISH PIPELINE RESET) -->
+    <div id="video-stage-layer" class="video-stage-layer mode-hidden">
+      <video id="main-video" class="video-el aspect-contain" playsinline webkit-playsinline preload="auto"></video>
+    </div>
+
+    <!-- FULLSCREEN OVERLAY STAGE -->
+    <div id="fullscreen-stage" class="fullscreen-stage is-hidden">
+      <!-- TRANSLUCENT QUICK CHANNEL DRAWER (LEFT SIDE IN LIVE FULLSCREEN) -->
+      <div id="fs-channel-drawer" class="fs-channel-drawer is-hidden">
+        <div class="drawer-header">
+          <span id="drawer-cat-title" class="drawer-title">Tüm Kanallar</span>
+          <span id="drawer-cat-count" class="drawer-count">0</span>
+        </div>
+        <div id="drawer-ch-list" class="drawer-ch-list"></div>
+        <div class="drawer-footer">OK: Kanal Değiştir &middot; SAĞ / GERİ: Kapat</div>
+      </div>
+
+      <!-- CHANNEL NUMBER / ZAPPING BANNER (TOP RIGHT) -->
+      <div id="zap-banner" class="zap-banner is-hidden">
+        <span id="zap-number" class="zap-number">001</span>
+        <span id="zap-name" class="zap-name">Kanal Adı</span>
+      </div>
+
+      <!-- FULLSCREEN BUFFERING / RECONNECT INDICATOR -->
+      <div id="fs-buffering" class="fs-buffering is-hidden">
+        <div class="loading-spinner"></div>
+        <div id="fs-buffering-text" class="fs-buffering-text">Yayın yükleniyor...</div>
+      </div>
+
+      <!-- AUTO-NEXT EPISODE POPUP (SERIES BOTTOM RIGHT) -->
+      <div id="next-ep-card" class="next-ep-card is-hidden">
+        <div class="next-ep-kicker">SIRADAKİ BÖLÜM <span id="next-ep-countdown" class="next-ep-timer">15 sn</span></div>
+        <div id="next-ep-title" class="next-ep-title">2. Bölüm</div>
+        <div class="next-ep-actions">
+          <button id="btn-next-ep-now" class="btn-primary btn-sm" data-focusable="true" data-zone="next-ep">&#9654; Şimdi Oynat</button>
+          <button id="btn-next-ep-dismiss" class="btn-ghost btn-sm" data-focusable="true" data-zone="next-ep">Gizle</button>
+        </div>
+      </div>
+
+      <!-- LIVE TV FULLSCREEN INFO BAR (CLEAN EPG & CHANNEL INFO - NO TRANSPORT BUTTONS) -->
+      <div id="live-osd" class="player-osd live-info-osd is-hidden">
+        <div class="live-osd-header">
+          <div class="live-osd-ch-block">
+            <div class="live-osd-logo-box">
+              <img id="live-osd-logo" class="live-osd-logo" src="" alt="">
+            </div>
+            <div class="live-osd-titles">
+              <div class="osd-title-line">
+                <span id="live-osd-num" class="osd-ch-num">001</span>
+                <span id="live-osd-name" class="osd-title">Kanal Adı</span>
+                <span id="live-osd-res" class="osd-meta-tag">FHD</span>
+                <span id="live-osd-format" class="osd-meta-tag">MPEG-TS</span>
+                <span id="live-osd-sleep-badge" class="osd-meta-tag osd-sleep-tag is-hidden">UYKU: 30dk</span>
+              </div>
+              <div id="live-osd-group" class="live-osd-group">Kategori Adı</div>
+            </div>
+          </div>
+          <div class="osd-clock-block">
+            <div id="live-osd-clock" class="clock-text">00:00</div>
+          </div>
+        </div>
+
+        <!-- CURRENT & NEXT PROGRAM SCHEDULE -->
+        <div class="live-osd-epg-box">
+          <div class="live-osd-now-row">
+            <span class="live-badge">YAYINDA</span>
+            <span id="live-osd-now-title" class="live-osd-now-title">Program bilgisi bekleniyor...</span>
+            <span id="live-osd-now-time" class="live-osd-now-time">--:-- - --:--</span>
+            <span id="live-osd-now-rem" class="live-osd-now-rem"></span>
+          </div>
+          <div class="live-osd-prog-track">
+            <div id="live-osd-epg-fill" class="live-osd-prog-fill"></div>
+          </div>
+          <div id="live-osd-now-desc" class="live-osd-desc">---</div>
+          <div class="live-osd-next-row">
+            <span class="live-next-tag">SONRAKİ:</span>
+            <span id="live-osd-next-title" class="live-osd-next-title">---</span>
+            <span id="live-osd-next-time" class="live-osd-next-time">--:-- - --:--</span>
+          </div>
+        </div>
+
+        <!-- COMPACT LIVE TV UTILITY BAR (NO PLAY/PAUSE/SEEK) -->
+        <div class="osd-controls">
+          <button id="losd-btn-drawer" class="osd-btn osd-btn-primary" data-focusable="true" data-zone="live-osd">&#9776; Kanallar (Sol)</button>
+          <button id="losd-btn-recall" class="osd-btn" data-focusable="true" data-zone="live-osd">&#8634; Son Kanal (0)</button>
+          <button id="losd-btn-aspect" class="osd-btn" data-focusable="true" data-zone="live-osd">Oran: Orijinal</button>
+          <button id="losd-btn-audio" class="osd-btn" data-focusable="true" data-zone="live-osd">Ses Dili</button>
+          <button id="losd-btn-sub" class="osd-btn" data-focusable="true" data-zone="live-osd">Altyazı</button>
+          <button id="losd-btn-sleep" class="osd-btn" data-focusable="true" data-zone="live-osd">Uyku: Kapalı</button>
+          <button id="losd-btn-fav" class="osd-btn" data-focusable="true" data-zone="live-osd">&#9734; Favori</button>
+        </div>
+      </div>
+
+      <!-- VOD & SERIES FULLSCREEN OSD (WITH INTERACTIVE SEEK BAR + SERIES EPISODES BUTTON) -->
+      <div id="player-osd" class="player-osd is-hidden">
+        <div class="osd-top">
+          <div class="osd-title-block">
+            <div class="osd-title-line">
+              <span id="osd-ch-num" class="osd-ch-num">VOD</span>
+              <span id="osd-title" class="osd-title">Başlık</span>
+              <span id="osd-res" class="osd-meta-tag">FHD</span>
+              <span id="osd-format" class="osd-meta-tag">VOD</span>
+              <span id="osd-aspect-tag" class="osd-meta-tag">ORİJİNAL</span>
+              <span id="osd-speed-tag" class="osd-meta-tag">1.0x</span>
+              <span id="osd-sleep-badge" class="osd-meta-tag osd-sleep-tag is-hidden">UYKU: 30dk</span>
+            </div>
+            <div id="osd-epg-line" class="osd-epg-line">İsteğe Bağlı Yayın</div>
+          </div>
+          <div class="osd-clock-block">
+            <div id="osd-clock" class="clock-text">00:00</div>
+          </div>
+        </div>
+
+        <!-- INTERACTIVE SEEKABLE PROGRESS BAR (D-PAD FOCUSABLE + MAGIC REMOTE CLICK/SCRUB) -->
+        <div id="osd-seek-wrap" class="osd-seek-wrap">
+          <span id="osd-time-cur" class="osd-time">00:00</span>
+          <div id="osd-seek-bar" class="osd-seek-bar" data-focusable="true" data-zone="osd">
+            <div id="osd-seek-tooltip" class="osd-seek-tooltip is-hidden">00:00</div>
+            <div id="osd-progress-track" class="osd-progress-track">
+              <div id="osd-progress-fill" class="osd-progress-fill"></div>
+              <div id="osd-progress-thumb" class="osd-progress-thumb"></div>
+            </div>
+          </div>
+          <span id="osd-time-dur" class="osd-time">00:00</span>
+        </div>
+
+        <!-- VOD / SERIES ACTION BUTTONS -->
+        <div class="osd-controls">
+          <button id="osd-btn-rw" class="osd-btn" data-focusable="true" data-zone="osd">&#9194; -10sn</button>
+          <button id="osd-btn-playpause" class="osd-btn osd-btn-primary" data-focusable="true" data-zone="osd">&#10074;&#10074; Duraklat</button>
+          <button id="osd-btn-ff" class="osd-btn" data-focusable="true" data-zone="osd">+10sn &#9193;</button>
+          <button id="osd-btn-episodes" class="osd-btn osd-btn-accent is-hidden" data-focusable="true" data-zone="osd">&#9776; Bölümler</button>
+          <button id="osd-btn-aspect" class="osd-btn" data-focusable="true" data-zone="osd">Oran: Orijinal</button>
+          <button id="osd-btn-audio" class="osd-btn" data-focusable="true" data-zone="osd">Ses Dili</button>
+          <button id="osd-btn-sub" class="osd-btn" data-focusable="true" data-zone="osd">Altyazı</button>
+          <button id="osd-btn-speed" class="osd-btn" data-focusable="true" data-zone="osd">Hız: 1x</button>
+          <button id="osd-btn-sleep" class="osd-btn" data-focusable="true" data-zone="osd">Uyku: Kapalı</button>
+          <button id="osd-btn-fav" class="osd-btn" data-focusable="true" data-zone="osd">&#9734; Favori</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: RESUME PLAYBACK (VOD / SERIES) -->
+    <div id="modal-resume" class="modal-backdrop is-hidden">
+      <div class="modal-box" data-modal-trap="true">
+        <div class="modal-title">Kaldığınız Yerden Devam Edin</div>
+        <div id="resume-desc" class="modal-desc">00:00 noktasından devam etmek ister misiniz?</div>
+        <div class="modal-footer-btns">
+          <button id="btn-resume-continue" class="btn-primary" data-focusable="true" data-zone="modal-resume">&#9654; Devam Et</button>
+          <button id="btn-resume-restart" class="btn-secondary" data-focusable="true" data-zone="modal-resume">&#8634; Baştan Başlat</button>
+          <button id="btn-resume-cancel" class="btn-ghost" data-focusable="true" data-zone="modal-resume">İptal</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: IN-PLAYER SERIES EPISODES PICKER -->
+    <div id="modal-episodes" class="modal-backdrop is-hidden">
+      <div class="modal-box modal-box-wide" data-modal-trap="true">
+        <div id="ep-modal-title" class="modal-title">Bölümler</div>
+        <div id="ep-modal-seasons" class="seasons-list ep-modal-seasons"></div>
+        <div id="ep-modal-list" class="ep-modal-list"></div>
+        <div class="modal-footer-btns">
+          <button id="btn-ep-modal-close" class="btn-secondary" data-focusable="true" data-zone="modal-episodes">Kapat</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: PARENTAL PIN -->
+    <div id="modal-pin" class="modal-backdrop is-hidden">
+      <div class="modal-box" data-modal-trap="true">
+        <div id="modal-pin-title" class="modal-title">Ebeveyn Kontrolü PIN</div>
+        <div id="modal-pin-desc" class="modal-desc">Devam etmek için 4 haneli PIN kodunu girin (Varsayılan: 0000).</div>
+        <div id="pin-dots" class="pin-dots">
+          <span class="pin-dot"></span>
+          <span class="pin-dot"></span>
+          <span class="pin-dot"></span>
+          <span class="pin-dot"></span>
+        </div>
+        <div class="pin-pad">
+          <button class="pin-key" data-pin="1" data-focusable="true" data-zone="modal-pin">1</button>
+          <button class="pin-key" data-pin="2" data-focusable="true" data-zone="modal-pin">2</button>
+          <button class="pin-key" data-pin="3" data-focusable="true" data-zone="modal-pin">3</button>
+          <button class="pin-key" data-pin="4" data-focusable="true" data-zone="modal-pin">4</button>
+          <button class="pin-key" data-pin="5" data-focusable="true" data-zone="modal-pin">5</button>
+          <button class="pin-key" data-pin="6" data-focusable="true" data-zone="modal-pin">6</button>
+          <button class="pin-key" data-pin="7" data-focusable="true" data-zone="modal-pin">7</button>
+          <button class="pin-key" data-pin="8" data-focusable="true" data-zone="modal-pin">8</button>
+          <button class="pin-key" data-pin="9" data-focusable="true" data-zone="modal-pin">9</button>
+          <button class="pin-key pin-key-action" data-pin="clear" data-focusable="true" data-zone="modal-pin">Sil</button>
+          <button class="pin-key" data-pin="0" data-focusable="true" data-zone="modal-pin">0</button>
+          <button class="pin-key pin-key-action" data-pin="cancel" data-focusable="true" data-zone="modal-pin">İptal</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: TRACK SELECTOR (AUDIO / SUBTITLE / SPEED) -->
+    <div id="modal-tracks" class="modal-backdrop is-hidden">
+      <div class="modal-box modal-box-list" data-modal-trap="true">
+        <div id="modal-tracks-title" class="modal-title">Seçim</div>
+        <div id="modal-tracks-list" class="modal-track-list"></div>
+        <div class="modal-footer-btns">
+          <button id="btn-tracks-close" class="btn-secondary" data-focusable="true" data-zone="modal-tracks">Kapat</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: EXIT CONFIRMATION -->
+    <div id="modal-exit" class="modal-backdrop is-hidden">
+      <div class="modal-box" data-modal-trap="true">
+        <div class="modal-title">Uygulamadan Çıkış</div>
+        <div class="modal-desc">Pro IPTV uygulamasından çıkmak istiyor musunuz?</div>
+        <div class="modal-footer-btns">
+          <button id="btn-exit-confirm" class="btn-danger" data-focusable="true" data-zone="modal-exit">Evet, Çık</button>
+          <button id="btn-exit-cancel" class="btn-secondary" data-focusable="true" data-zone="modal-exit">Vazgeç</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION -->
+    <div id="toast-box" class="toast-box is-hidden"></div>
+  </div>
+
+  <!-- PURE ES5 MODULES (ZERO EXTERNAL CDN) -->
+  <script type="text/javascript" src="js/storage.js"></script>
+  <script type="text/javascript" src="js/spatnav.js"></script>
+  <script type="text/javascript" src="js/parser.js"></script>
+  <script type="text/javascript" src="js/player.js"></script>
+  <script type="text/javascript" src="js/app.js"></script>
+</body>
+</html>
