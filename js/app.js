@@ -694,6 +694,10 @@
 
   function connectProfile(profile) {
     if (!profile) { return; }
+    if (app.screen === 'manager' && $('inp-cors-proxy')) {
+      var proxyVal = $('inp-cors-proxy').value.replace(/^\s+|\s+$/g, '');
+      IPTVStorage.updateSetting('corsProxy', proxyVal);
+    }
     app.activeProfile = profile;
     if (profile.id) {
       IPTVStorage.setActiveProfileId(profile.id);

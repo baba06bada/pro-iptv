@@ -127,14 +127,14 @@ var IPTVPlayer = (function () {
     if (proxy.indexOf('{url}') !== -1) {
       return proxy.replace('{url}', encodeURIComponent(url));
     }
+    if (proxy.indexOf('?') === -1) {
+      proxy = (proxy.charAt(proxy.length - 1) === '/') ? (proxy + '?url=') : (proxy + '/?url=');
+    }
     var out = proxy + encodeURIComponent(url);
-    // For query-param proxies (e.g. ?url=), bust iOS Safari / edge cache on every play
-    // so reopening the same channel never gets a stale expired .m3u8 token playlist.
-    if (proxy.indexOf('?') !== -1) {
-      out += '&_cb=' + (new Date().getTime());
-      if (isHlsHint) {
-        out += '&ext=.m3u8';
-      }
+    // Bust iOS Safari / edge cache on every play so reopening a channel never uses a stale .m3u8 token
+    out += '&_cb=' + (new Date().getTime());
+    if (isHlsHint) {
+      out += '&ext=.m3u8';
     }
     return out;
   }

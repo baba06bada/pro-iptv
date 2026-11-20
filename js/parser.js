@@ -48,10 +48,26 @@ var IPTVParser = (function () {
     if (u.indexOf('http://') !== 0 && u.indexOf('https://') !== 0) {
       u = 'http://' + u;
     }
+    var qIdx = u.indexOf('?');
+    if (qIdx !== -1) {
+      u = u.substring(0, qIdx);
+    }
+    u = u.replace(/\/(player_api|panel_api|get)\.php$/i, '');
     while (u.length > 0 && u.charAt(u.length - 1) === '/') {
       u = u.substring(0, u.length - 1);
     }
     return u;
+  }
+
+  function normalizeProxyBase(rawProxy) {
+    var p = trimStr(rawProxy);
+    if (!p) { return ''; }
+    if (p.indexOf('{url}') !== -1) { return p; }
+    if (p.indexOf('?') !== -1) { return p; }
+    if (p.charAt(p.length - 1) === '/') {
+      return p + '?url=';
+    }
+    return p + '/?url=';
   }
 
   function buildProxiedUrl(targetUrl) {
@@ -59,7 +75,7 @@ var IPTVParser = (function () {
     var proxy = '';
     try {
       if (typeof IPTVStorage !== 'undefined' && IPTVStorage.getSettings) {
-        proxy = trimStr(IPTVStorage.getSettings().corsProxy || '');
+        proxy = normalizeProxyBase(IPTVStorage.getSettings().corsProxy || '');
       }
     } catch (e) {}
     if (!proxy) { return targetUrl; }
@@ -78,51 +94,63 @@ var IPTVParser = (function () {
   }
 
   function xhrGet(url, onSuccess, onError) {
-    var xhr = new XMLHttpRequest();
-    var finished = false;
     var reqUrl = buildProxiedUrl(url);
     var hasProxy = (reqUrl !== url);
+    var canDirectFallback = hasProxy && !(isHttpsPage() && url.indexOf('http://') === 0);
 
-    function doneError(msg) {
-      if (finished) { return; }
-      finished = true;
-      if (onError) { onError(msg); }
-    }
+    function runRequest(finalUrl, usingProxy, allowDirectRetry) {
+      var xhr = new XMLHttpRequest();
+      var finished = false;
 
-    function buildNetworkErrorMsg() {
-      if (isHttpsPage() && url.indexOf('http://') === 0 && !hasProxy) {
-        return 'HTTPS / CORS Engeli: GitHub Pages (HTTPS) üzerinden HTTP IPTV adresi doğrudan okunamaz. CORS Proxy URL girin veya LG TV (.ipk) kullanın.';
-      }
-      if (!hasProxy && window.location && (window.location.protocol === 'http:' || window.location.protocol === 'https:')) {
-        return 'Tarayıcı CORS Engeli: IPTV sunucusu tarayıcı erişimine izin vermiyor. CORS Proxy URL girin veya LG TV (.ipk) kullanın.';
-      }
-      return 'Sunucuya erişilemedi (CORS Proxy veya IPTV adresi hatalı olabilir).';
-    }
-
-    try {
-      xhr.open('GET', reqUrl, true);
-      xhr.timeout = XHR_TIMEOUT;
-      xhr.onreadystatechange = function () {
-        if (xhr.readyState !== 4 || finished) { return; }
-        if (xhr.status >= 200 && xhr.status < 300) {
-          finished = true;
-          if (onSuccess) { onSuccess(xhr.responseText); }
-        } else if (xhr.status === 0) {
-          doneError(buildNetworkErrorMsg());
-        } else {
-          doneError('Sunucu hatası: HTTP ' + xhr.status);
+      function doneError(msg) {
+        if (finished) { return; }
+        finished = true;
+        if (allowDirectRetry) {
+          runRequest(url, false, false);
+          return;
         }
-      };
-      xhr.ontimeout = function () {
-        doneError('Sunucu yanıt vermedi (Zaman aşımı).');
-      };
-      xhr.onerror = function () {
-        doneError(buildNetworkErrorMsg());
-      };
-      xhr.send(null);
-    } catch (e) {
-      doneError('İstek gönderilemedi: ' + (e.message || 'Bilinmeyen hata'));
+        if (onError) { onError(msg); }
+      }
+
+      function buildNetworkErrorMsg() {
+        if (isHttpsPage() && url.indexOf('http://') === 0 && !usingProxy) {
+          return 'HTTPS / CORS Engeli: GitHub Pages (HTTPS) üzerinden HTTP IPTV adresi doğrudan okunamaz. CORS Proxy URL girin veya LG TV (.ipk) kullanın.';
+        }
+        if (!usingProxy && window.location && (window.location.protocol === 'http:' || window.location.protocol === 'https:')) {
+          return 'Tarayıcı CORS Engeli: IPTV sunucusu tarayıcı erişimine izin vermiyor. CORS Proxy URL girin veya LG TV (.ipk) kullanın.';
+        }
+        return 'Sunucuya erişilemedi (CORS Proxy veya IPTV panel adresi hatalı/engelli olabilir).';
+      }
+
+      try {
+        xhr.open('GET', finalUrl, true);
+        xhr.timeout = XHR_TIMEOUT;
+        xhr.onreadystatechange = function () {
+          if (xhr.readyState !== 4 || finished) { return; }
+          if (xhr.status >= 200 && xhr.status < 300) {
+            finished = true;
+            if (onSuccess) { onSuccess(xhr.responseText); }
+          } else if (xhr.status === 0) {
+            doneError(buildNetworkErrorMsg());
+          } else if (usingProxy && (xhr.status === 404 || xhr.status === 403 || xhr.status === 400)) {
+            doneError('Proxy / Panel hatası: HTTP ' + xhr.status + ' (Worker User-Agent veya Proxy URL ayarını kontrol edin).');
+          } else {
+            doneError('Sunucu hatası: HTTP ' + xhr.status);
+          }
+        };
+        xhr.ontimeout = function () {
+          doneError('Sunucu yanıt vermedi (Zaman aşımı).');
+        };
+        xhr.onerror = function () {
+          doneError(buildNetworkErrorMsg());
+        };
+        xhr.send(null);
+      } catch (e) {
+        doneError('İstek gönderilemedi: ' + (e.message || 'Bilinmeyen hata'));
+      }
     }
+
+    runRequest(reqUrl, hasProxy, canDirectFallback);
   }
 
   function xhrGetJson(url, onSuccess, onError) {
